@@ -70,7 +70,7 @@ static char peek(const Scanner *scanner)
   return *scanner->current;
 }
 
-static char peek_n(const Scanner *scanner, const size_t offset)
+static char peek_n_ahead(const Scanner *scanner, const size_t offset)
 {
   if (is_at_end_of_source_code(scanner))
   {
@@ -98,7 +98,7 @@ static void skip_whitespace(Scanner *scanner)
       advance(scanner);
       break;
     case '/':
-      if (peek_n(scanner, 1) == '/')
+      if (peek_n_ahead(scanner, 1) == '/')
       {
         while (peek(scanner) != '\n' && is_at_end_of_source_code(scanner))
         {
@@ -149,7 +149,7 @@ static Token new_number(Scanner *scanner)
     advance(scanner);
   }
 
-  if (peek(scanner) == '.' && is_digit(peek_n(scanner, 1)))
+  if (peek(scanner) == '.' && is_digit(peek_n_ahead(scanner, 1)))
   {
     advance(scanner);
 
