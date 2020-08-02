@@ -2,11 +2,16 @@
 #define VM_H
 
 #include "chunk.h"
+#include "value.h"
+
+#define STACK_MAX 256
 
 typedef struct
 {
   Chunk *chunk;
   uint8_t *ip;
+  Value stack[STACK_MAX];
+  Value *stack_top;
 } Vm;
 
 typedef enum
@@ -19,6 +24,8 @@ typedef enum
 Vm new_vm();
 void init_vm(Vm *vm);
 void free_vm(Vm *vm);
-InterpretResult interpret(Chunk *chunk);
+InterpretResult interpret(Vm *vm, Chunk *chunk);
+void push(Vm *vm, Value value);
+Value pop(Vm *vm);
 
 #endif

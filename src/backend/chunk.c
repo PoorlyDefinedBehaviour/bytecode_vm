@@ -2,6 +2,13 @@
 #include "chunk.h"
 #include "memory.h"
 
+Chunk new_chunk()
+{
+  Chunk chunk;
+  init_chunk(&chunk);
+  return chunk;
+}
+
 void init_chunk(Chunk *chunk)
 {
   chunk->count = 0;
