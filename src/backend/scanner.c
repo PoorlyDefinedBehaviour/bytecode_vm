@@ -129,7 +129,7 @@ static Token new_string(Scanner *scanner)
 
   if (is_at_end_of_source_code(scanner))
   {
-    return new_error_token(scanner, "Unterminatednew_ string");
+    return new_error_token(scanner, "Unterminated string");
   }
 
   advance(scanner);
