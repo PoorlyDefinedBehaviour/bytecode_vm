@@ -1,9 +1,12 @@
 #include <stdio.h>
-#include "./core/chunk.h"
-#include "./core/debug.h"
+#include "./backend/chunk.h"
+#include "./backend/debug.h"
+#include "./backend/vm.h"
 
 int main(int argc, const char *argv[])
 {
+  Vm vm = new_vm();
+
   Chunk chunk;
   init_chunk(&chunk);
 
@@ -15,6 +18,8 @@ int main(int argc, const char *argv[])
   dissasamble_chunk(&chunk, "test chunk");
 
   free_chunk(&chunk);
+
+  free_vm(&vm);
 
   return 0;
 }

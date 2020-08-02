@@ -8,7 +8,7 @@
         "kind": "test",
         "isDefault": true
       },
-      "command": "gcc -Wall -Wextra -Wpedantic -std=c11 src/*.c src/core/*.c -o main && main"
+      "command": "gcc -Wall -Wextra -Wpedantic -std=c11 src/*.c src/backend/*.c -o main && main"
     }
   ]
 }
