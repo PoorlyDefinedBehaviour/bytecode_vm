@@ -7,31 +7,14 @@ int main(int argc, const char *argv[])
 {
   Vm vm = new_vm();
 
-  Chunk chunk = new_chunk();
-
-  write_chunk(&chunk, OP_CONSTANT, 123);
-
-  write_chunk(&chunk, add_constant(&chunk, 2), 123);
-
-  write_chunk(&chunk, OP_CONSTANT, 123);
-
-  write_chunk(&chunk, add_constant(&chunk, 2), 123);
-
-  write_chunk(&chunk, OP_ADD, 123);
-
-  write_chunk(&chunk, OP_CONSTANT, 123);
-
-  write_chunk(&chunk, add_constant(&chunk, 2), 123);
-
-  write_chunk(&chunk, OP_DIVIDE, 123);
-
-  write_chunk(&chunk, OP_NEGATE, 123);
-
-  write_chunk(&chunk, OP_RETURN, 123);
-
-  interpret(&vm, &chunk);
-
-  free_chunk(&chunk);
+  if (argc == 1)
+  {
+    repl();
+  }
+  else if (argc == 2)
+  {
+    run_file(argv[1]);
+  }
 
   free_vm(&vm);
 
