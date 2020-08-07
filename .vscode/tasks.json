@@ -2,13 +2,24 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "Build C project",
+      "type": "shell",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": "$gcc",
+      "command": "gcc -g -Wall -Wextra -Wpedantic -std=c11 src/*.c src/backend/*.c -o bin/main"
+    },
+    {
       "label": "Build & run C project",
       "type": "shell",
       "group": {
         "kind": "test",
         "isDefault": true
       },
-      "command": "gcc -Wall -Wextra -Wpedantic -std=c11 src/*.c src/backend/*.c -o main && main"
+      "problemMatcher": "$gcc",
+      "command": "gcc -Wall -Wextra -Wpedantic -std=c11 src/*.c src/backend/*.c -o bin/main && bin/main"
     }
   ]
 }

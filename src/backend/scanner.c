@@ -13,7 +13,7 @@ Scanner new_scanner(const char *source_code)
   return scanner;
 }
 
-static bool is_at_end_of_source_code(Scanner *scanner)
+static bool is_at_end_of_source_code(const Scanner *scanner)
 {
   return *scanner->current == '\0';
 }
@@ -164,8 +164,8 @@ static Token new_number(Scanner *scanner)
 
 static bool is_alpha(const char c)
 {
-  return c >= 'a' && c <= 'z' ||
-         c >= 'A' && c <= 'Z' ||
+  return (c >= 'a' && c <= 'z') ||
+         (c >= 'A' && c <= 'Z') ||
          c == '_' || c == '?';
 }
 

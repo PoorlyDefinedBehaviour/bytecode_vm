@@ -26,11 +26,11 @@ static char *read_file(const char *path)
   return buffer;
 }
 
-static void run_file(const char *path)
+static void run_file(Vm *vm, const char *path)
 {
   char *source_code = read_file(path);
 
-  InterpretResult result = interpret(source_code);
+  InterpretResult result = interpret(vm, source_code);
 
   free(source_code);
 

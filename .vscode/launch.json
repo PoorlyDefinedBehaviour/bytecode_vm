@@ -2,16 +2,16 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "C++ Debug (gdb)",
+      "name": "C+ Debug (gdb)",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/main",
-      "preLaunchTask": "Build C++ project",
+      "program": "${workspaceFolder}/bin/main",
+      "preLaunchTask": "Build C project",
       "args": [],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
       "environment": [],
-      "externalConsole": true,
+      "externalConsole": false,
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [

@@ -103,8 +103,22 @@ static InterpretResult run(Vm *vm)
 
 InterpretResult interpret(Vm *vm, const char *source_code)
 {
-  compile(vm, source_code);
-  return INTERPRET_OK;
+  Chunk chunk = new_chunk();
+
+    if (!compile(source_code, &chunk))
+  {
+    free_chunk(&chunk);
+    return INTERPRET_COMPILE_ERROR;
+  }
+
+  vm->chunk = &chunk;
+  vm->ip = vm->chunk->code;
+
+  InterpretResult result = run(vm);
+
+  free_chunk(&chunk);
+
+  return result;
 }
 
 void push(Vm *vm, Value value)

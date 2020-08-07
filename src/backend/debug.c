@@ -27,7 +27,7 @@ void dissasamble_chunk(Chunk *chunk, const char *name)
 
 size_t dissamble_instruction(Chunk *chunk, size_t offset)
 {
-  printf("%04d ", offset);
+  printf("%04zu ", offset);
 
   if (offset > 0 && chunk->lines[offset] == chunk->lines[offset - 1])
   {
@@ -35,7 +35,7 @@ size_t dissamble_instruction(Chunk *chunk, size_t offset)
   }
   else
   {
-    printf("%d ", chunk->lines[offset]);
+    printf("%zu ", chunk->lines[offset]);
   }
 
   uint8_t instruction = chunk->code[offset];
