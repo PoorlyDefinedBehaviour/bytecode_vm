@@ -6,11 +6,11 @@
 
 typedef struct
 {
-  Token current;
-  Token previous;
-  bool had_error;
-  bool panic_mode;
-  Scanner scanner;
+    Token current;
+    Token previous;
+    bool had_error;
+    bool panic_mode;
+    Scanner scanner;
 } Parser;
 
 bool compile(const char *source_code, Chunk *chunk);
