@@ -1,9 +1,9 @@
 #include <stdio.h>
-#include "./backend/chunk.h"
-#include "./backend/debug.h"
-#include "./backend/vm.h"
-#include "./frontend/repl.h"
-#include "./frontend/run_file.h"
+#include "./chunk.h"
+#include "./debug.h"
+#include "./vm.h"
+#include "./repl.h"
+#include "./run_file.h"
 
 int main(int argc, const char *argv[])
 {

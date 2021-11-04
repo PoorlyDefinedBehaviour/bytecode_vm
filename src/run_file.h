@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "../backend/vm.h"
+#include "./vm.h"
 
 static char *read_file(const char *path)
 {

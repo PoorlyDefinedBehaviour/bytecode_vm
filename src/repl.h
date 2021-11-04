@@ -1,20 +1,19 @@
-#include "../backend/vm.h"
+#include "./vm.h"
 
 static void repl(Vm *vm)
 {
-    char line[1024];
+  char line[1024];
 
-    for (;;)
+  for (;;)
+  {
+    printf("> ");
+
+    if (!fgets(line, sizeof(line), stdin))
     {
-        printf("> ");
-
-        if (!fgets(line, sizeof(line), stdin))
-        {
-            printf("\n");
-            break;
-        }
-
-
-        interpret(vm, line);
+      printf("\n");
+      break;
     }
+
+    interpret(vm, line);
+  }
 }
