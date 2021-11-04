@@ -7,7 +7,6 @@
 
 int main(int argc, const char *argv[])
 {
-
   Vm vm = new_vm();
 
   if (argc == 1)
