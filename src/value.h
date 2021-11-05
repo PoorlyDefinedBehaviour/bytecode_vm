@@ -3,36 +3,65 @@
 
 #include "common.h"
 
-typedef enum {
-		VAL_BOOL,
-		VAL_NIL,
-		VAL_NUMBER
+typedef enum
+{
+  VAL_BOOL,
+  VAL_NIL,
+  VAL_NUMBER,
+  // Values that live on the heap have
+  // a ValueType of VAL_OBJ.
+  VAL_OBJ,
 } ValueType;
 
-typedef struct {
-		ValueType type;
-		union {
-				bool boolean;
-				double number;
-		} as;
+typedef struct Obj Obj;
+typedef struct ObjString ObjString;
+
+// Small, fixed-size types will
+// be stored directly inside the Value struct itself.
+//
+// Examples of small or fixed-size values:
+//
+// booleans
+// numbers
+//
+// If the object is large or it's size is unknown at
+// compile time, its data will live on the heap,
+// and the Value struct will contain a pointer to it.
+//
+// Example of large or of unknown size values:
+//
+// String
+// Recursive algebraic data structures
+typedef struct
+{
+  ValueType type;
+  union
+  {
+    bool boolean;
+    double number;
+    // Values that live on the heap are represented by Obj.
+    Obj *obj;
+  } as;
 } Value;
 
 #define IS_BOOL(value) ((value).type == VAL_BOOL)
 #define IS_NIL(value) ((value).type == VAL_NIL)
 #define IS_NUMBER(value) ((value).type == VAL_NUMBER)
+#define IS_OBJ(value) ((value).type == VAL_OBJ)
 
 #define AS_BOOL(value) ((value).as.boolean)
 #define AS_NUMBER(value) ((value).as.number)
+#define AS_OBJ(value) ((value).as.obj)
 
 #define BOOL_VAL(value) ((Value){VAL_BOOL, {.boolean = value}})
 #define NIL_VAL ((Value){VAL_NIL, {.number = 0}})
 #define NUMBER_VAL(value) ((Value){VAL_NUMBER, {.number = value}})
-
+#define OBJ_VAL(value) ((Value){VAL_OBJ, {.obj = value}})
 typedef struct
 {
-		size_t capacity;
-		size_t count;
-		Value *values;
+  size_t capacity;
+  size_t count;
+  Value *values;
 
 } ValueArray;
 
