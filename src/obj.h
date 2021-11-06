@@ -36,6 +36,10 @@ struct ObjString
   // TODO: should length be unsigned int?
   int length;
   char *chars;
+  // [hash] is pre computed to make indexing
+  // hash tables faster.
+  // TODO: can we use it to make equality comparison O(1)?
+  uint32_t hash;
 };
 
 ObjString *copy_string(Vm *vm, const char *chars, int length);

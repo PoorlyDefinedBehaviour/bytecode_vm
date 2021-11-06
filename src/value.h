@@ -86,7 +86,6 @@ typedef struct
   size_t capacity;
   size_t count;
   Value *values;
-
 } ValueArray;
 
 void init_value_array(ValueArray *array);
