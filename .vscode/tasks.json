@@ -4,22 +4,19 @@
     {
       "label": "Build C project",
       "type": "shell",
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      },
+      "group": "build",
       "problemMatcher": "$gcc",
-      "command": "gcc -g -Wall -Wextra -Wpedantic -std=c11 src/*.c src/backend/*.c -o bin/main"
+      "command": "gcc -g -Wall -Wextra -Wpedantic -std=c11 src/*.c -o bin/main"
     },
     {
       "label": "Build & run C project",
       "type": "shell",
       "group": {
-        "kind": "test",
+        "kind": "build",
         "isDefault": true
       },
       "problemMatcher": "$gcc",
-      "command": "gcc -Wall -Wextra -Wpedantic -std=c11 src/*.c src/backend/*.c -o bin/main && bin/main"
+      "command": "gcc -Wall -Wextra -Wpedantic -std=c11 src/*.c -o bin/main && bin/main"
     }
   ]
 }
