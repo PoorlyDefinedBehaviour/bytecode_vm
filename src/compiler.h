@@ -6,14 +6,15 @@
 
 typedef struct
 {
-    Token current;
-    Token previous;
-    bool had_error;
-    bool panic_mode;
-    Scanner scanner;
+  Token current;
+  Token previous;
+  bool had_error;
+  bool panic_mode;
+  Scanner scanner;
+  Vm *vm;
 } Parser;
 
-bool compile(const char *source_code, Chunk *chunk);
-Parser new_parser(const char *source_code);
+bool compile(Vm *vm, const char *source_code, Chunk *chunk);
+Parser new_parser(Vm *vm, const char *source_code);
 
 #endif

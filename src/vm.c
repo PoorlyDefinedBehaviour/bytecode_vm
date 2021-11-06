@@ -22,10 +22,43 @@ static void reset_stack(Vm *vm)
 void init_vm(Vm *vm)
 {
   reset_stack(vm);
+  vm->objects = NULL;
+}
+
+void free_object(Obj *obj)
+{
+  switch (obj->type)
+  {
+  case OBJ_STRING:
+  {
+    ObjString *string = (ObjString *)obj;
+    // [string->length + 1] because every string has
+    // \0 appended to it even though we don't take \0
+    // into account when setting the string length because
+    // it is an implementation detail that we do not want
+    // to leak to the user.
+    FREE_ARRAY(char, string->chars, string->length + 1);
+    FREE(ObjString, obj);
+    break;
+  }
+  }
+}
+
+void free_objects(Vm *vm)
+{
+  Obj *current = vm->objects;
+
+  while (current != NULL)
+  {
+    Obj *next = current->next;
+    free_object(current);
+    current = next;
+  }
 }
 
 void free_vm(Vm *vm)
 {
+  free_objects(vm);
 }
 
 static Value peek(Vm *vm, size_t distance)
@@ -75,7 +108,7 @@ static void concatenate_strings(Vm *vm)
   // C functions expect strings to terminate in \0.
   chars[length] = '\0';
 
-  ObjString *result = take_string(chars, length);
+  ObjString *result = take_string(vm, chars, length);
 
   push(vm, OBJ_VAL(result));
 }
@@ -220,7 +253,7 @@ InterpretResult interpret(Vm *vm, const char *source_code)
 {
   Chunk chunk = new_chunk();
 
-  if (!compile(source_code, &chunk))
+  if (!compile(vm, source_code, &chunk))
   {
     free_chunk(&chunk);
     return INTERPRET_COMPILE_ERROR;

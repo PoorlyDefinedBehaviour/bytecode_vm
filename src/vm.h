@@ -12,6 +12,8 @@ typedef struct
   uint8_t *ip;
   Value stack[STACK_MAX];
   Value *stack_top;
+  // Linked list of every heap allocated object.
+  Obj *objects;
 } Vm;
 
 typedef enum

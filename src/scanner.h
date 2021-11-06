@@ -60,6 +60,8 @@ typedef enum
   TOKEN_EOF
 } TokenType;
 
+const char *token_type_to_string(TokenType type);
+
 typedef struct
 {
   TokenType type;

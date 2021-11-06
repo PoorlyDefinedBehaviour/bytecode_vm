@@ -1,6 +1,7 @@
 #ifndef OBJ_H
 #define OBJ_H
 
+#include "vm.h"
 #include "common.h"
 #include "value.h"
 
@@ -12,6 +13,12 @@ typedef enum
 struct Obj
 {
   ObjType type;
+  // We don't have a garbage collector yet,
+  // so we will use a linked list to be able
+  // to reach every object thats allocated in the heap
+  // whether or not the user's program or the VM's stack
+  // still has a reference to it.
+  Obj *next;
 };
 
 // C specifies that struct fields are
@@ -31,9 +38,9 @@ struct ObjString
   char *chars;
 };
 
-ObjString *copy_string(const char *chars, int length);
+ObjString *copy_string(Vm *vm, const char *chars, int length);
 
-ObjString *take_string(const char *chars, int length);
+ObjString *take_string(Vm *vm, const char *chars, int length);
 
 #define OBJ_TYPE(value) ((AS_OBJ(value))->type)
 

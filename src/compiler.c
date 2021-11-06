@@ -49,18 +49,18 @@ static void error_at(Parser *parser, const Token *token, const char *message)
 
   parser->panic_mode = true;
 
-  fprintf(stderr, "[line %zu] Error", token->line);
+  fprintf(stderr, "[line %zu] ", token->line);
 
   if (token->type == TOKEN_EOF)
   {
-    fprintf(stderr, " at end");
+    fprintf(stderr, " at end\n");
   }
   else if (token->type == TOKEN_ERROR)
   {
   }
   else
   {
-    fprintf(stderr, " at %s", message);
+    fprintf(stderr, "%s\n", message);
     parser->had_error = true;
   }
 }
@@ -91,10 +91,11 @@ static void advance(Parser *parser)
   }
 }
 
-Parser new_parser(const char *source_code)
+Parser new_parser(Vm *vm, const char *source_code)
 {
   Parser parser;
 
+  parser.vm = vm;
   parser.scanner = new_scanner(source_code);
   parser.had_error = false;
   parser.panic_mode = false;
@@ -136,7 +137,7 @@ static void emit_constant(Parser *parser, const Value value)
   emit_bytes(parser, OP_CONSTANT, make_constant(parser, value));
 }
 
-static void consume(Parser *parser, const TokenType type, const char *message)
+static void consume(Parser *parser, const TokenType type)
 {
   if (parser->current.type == type)
   {
@@ -144,7 +145,16 @@ static void consume(Parser *parser, const TokenType type, const char *message)
     return;
   }
 
-  error_at_current(parser, message);
+  char buffer[256];
+
+  snprintf(
+      buffer,
+      256,
+      "expected %s, got %s",
+      token_type_to_string(type),
+      token_type_to_string(parser->current.type));
+
+  error_at_current(parser, buffer);
 }
 
 static void emit_return(Parser *parser)
@@ -172,7 +182,7 @@ static void parse_precedence(Parser *parser, const Precedence precedence)
 
   if (prefix_rule == NULL)
   {
-    error(parser, "Expect expression");
+    error(parser, "expected expression");
     return;
   }
 
@@ -196,7 +206,7 @@ static void expression(Parser *parser)
 static void grouping(Parser *parser)
 {
   expression(parser);
-  consume(parser, TOKEN_RIGHT_PAREN, "Expect ')' after expression");
+  consume(parser, TOKEN_RIGHT_PAREN);
 }
 
 static void unary(Parser *parser)
@@ -231,7 +241,10 @@ static void string(Parser *parser)
   // Given the following string "hello world":
   // start + 1 removes the first " and
   // previous.length - 2 removes the last ".
-  ObjString *string = copy_string(parser->previous.start + 1, parser->previous.length - 2);
+  //
+  // TODO: this is a constant string, at the moment
+  // we are heap allocating it, but it could be put on the stack.
+  ObjString *string = copy_string(parser->vm, parser->previous.start + 1, parser->previous.length - 2);
 
   emit_constant(parser, OBJ_VAL(string));
 }
@@ -347,15 +360,15 @@ static ParseRule *get_rule(const TokenType type)
   return &rules[type];
 }
 
-bool compile(const char *source_code, Chunk *chunk)
+bool compile(Vm *vm, const char *source_code, Chunk *chunk)
 {
-  Parser parser = new_parser(source_code);
+  Parser parser = new_parser(vm, source_code);
 
   compiling_chunk = chunk;
 
   advance(&parser);
   expression(&parser);
-  consume(&parser, TOKEN_EOF, "expected end of expression");
+  consume(&parser, TOKEN_EOF);
 
   end_compiler(&parser);
 
