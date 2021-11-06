@@ -186,7 +186,7 @@ ObjString *table_find_string(HashTable *table, const char *chars, int length, ui
         return NULL;
       }
     }
-    // If the key we are looking at equals he key we are looking for,
+    // If the key we are looking at equals the key we are looking for,
     // we return it.
     // [length] and [hash] comparisons are optimizations.
     else if (entry->key->length == length && entry->key->hash == hash &&
