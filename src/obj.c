@@ -26,10 +26,26 @@ static Obj *allocate_object(Vm *vm, size_t size, ObjType type)
 
 static ObjString *allocate_string(Vm *vm, char *chars, int length)
 {
+  uint32_t hash = hash_string(chars, length);
+  ObjString *interned_string = hash_table_find_string(&vm->strings, chars, length, hash);
+
+  if (interned_string != NULL)
+  {
+    // Freeing the string because we already have
+    // another string with the same contents in the vm.
+    //
+    // [length + 1] to take the \0 that is appended
+    // to every string into account
+    FREE_ARRAY(char, chars, length + 1);
+    return interned_string;
+  }
+
   ObjString *string = ALLOCATE_OBJ(vm, ObjString, OBJ_STRING);
   string->length = length;
   string->chars = chars;
-  string->hash = hash_string(string->chars, string->length);
+  string->hash = hash;
+  // Interning the string
+  hash_table_set(&vm->strings, string, NIL_VAL);
   return string;
 }
 

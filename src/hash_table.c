@@ -8,12 +8,11 @@
 
 #define HASH_TABLE_MAX_LOAD 0.75
 
-HashTable *new_hash_table()
+HashTable new_hash_table()
 {
-  // TODO: allocate table
-  HashTable *table;
+  HashTable table;
 
-  init_table(table);
+  init_table(&table);
 
   return table;
 }
@@ -165,6 +164,39 @@ Value *hash_table_get(HashTable *table, ObjString *key)
   }
 
   return &entry->value;
+}
+
+ObjString *table_find_string(HashTable *table, const char *chars, int length, uint32_t hash)
+{
+  if (table->count == 0)
+  {
+    return NULL;
+  }
+
+  uint32_t index = hash % table->capacity;
+
+  for (;;)
+  {
+    Entry *entry = &table->entries[index];
+
+    if (entry->key == NULL)
+    {
+      if (IS_NIL(entry->value))
+      {
+        return NULL;
+      }
+    }
+    // If the key we are looking at equals he key we are looking for,
+    // we return it.
+    // [length] and [hash] comparisons are optimizations.
+    else if (entry->key->length == length && entry->key->hash == hash &&
+             memcmp(entry->key->chars, chars, length) == 0)
+    {
+      return entry->key;
+    }
+
+    index = (index + 1) % table->capacity;
+  }
 }
 
 bool hash_table_delete(HashTable *table, ObjString *key)

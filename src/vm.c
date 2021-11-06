@@ -23,6 +23,13 @@ void init_vm(Vm *vm)
 {
   reset_stack(vm);
   vm->objects = NULL;
+  vm->strings = new_hash_table();
+}
+
+void free_vm(Vm *vm)
+{
+  free_hash_table(&vm->strings);
+  free_objects(vm);
 }
 
 void free_object(Obj *obj)
@@ -54,11 +61,6 @@ void free_objects(Vm *vm)
     free_object(current);
     current = next;
   }
-}
-
-void free_vm(Vm *vm)
-{
-  free_objects(vm);
 }
 
 static Value peek(Vm *vm, size_t distance)

@@ -19,7 +19,7 @@ typedef struct
   Entry *entries;
 } HashTable;
 
-HashTable *new_hash_table();
+HashTable new_hash_table();
 
 void free_hash_table(HashTable *table);
 
@@ -32,6 +32,8 @@ void hash_table_extend(HashTable *table, HashTable *with);
 // Returns the value associated to [key] in the [table].
 // If [key] is not present in [table], returns NULL.
 Value *hash_table_get(HashTable *table, ObjString *key);
+
+ObjString *table_find_string(HashTable *table, const char *chars, int length, uint32_t hash);
 
 // Removes [key] from [table].
 // Returns true if [key] was found in [table]

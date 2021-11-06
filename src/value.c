@@ -93,18 +93,13 @@ bool values_equal(const Value a, const Value b)
       OBJ_TYPE(a)
       {
       case OBJ_STRING:
-        if (AS_OBJSTRING(a)
-                ->length != AS_OBJSTRING(b)->length)
-        {
-          return false;
-        }
-
-        memcmp(
-            AS_OBJSTRING(a)->chars,
-            AS_OBJSTRING(b)->chars,
-            AS_OBJSTRING(a)->length) == 0;
-
-        break;
+        // We can just compare pointers here
+        // because every string is interned,
+        // we only have one ObjString* for each
+        // possible string.
+        //
+        // This means string comparison is O(1).
+        return AS_OBJ(a) == AS_OBJ(b);
       }
   }
   }
