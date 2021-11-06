@@ -36,9 +36,7 @@ struct ObjString
   // TODO: should length be unsigned int?
   int length;
   char *chars;
-  // [hash] is pre computed to make indexing
-  // hash tables faster.
-  // TODO: can we use it to make equality comparison O(1)?
+  // [hash] is pre computed to make indexing hash tables faster.
   uint32_t hash;
 };
 
