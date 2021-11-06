@@ -118,13 +118,14 @@ static void skip_whitespace(Scanner *scanner)
 
 static Token new_string(Scanner *scanner)
 {
-  while (peek(scanner) != '"' && is_at_end_of_source_code(scanner))
+  while (peek(scanner) != '"' && !is_at_end_of_source_code(scanner))
   {
     if (peek(scanner) == '\n')
     {
       scanner->line += 1;
-      advance(scanner);
     }
+
+    advance(scanner);
   }
 
   if (is_at_end_of_source_code(scanner))
@@ -132,6 +133,7 @@ static Token new_string(Scanner *scanner)
     return new_error_token(scanner, "Unterminated string");
   }
 
+  // consume "
   advance(scanner);
 
   return new_token(scanner, TOKEN_STRING);
@@ -306,4 +308,99 @@ Token scan_token(Scanner *scanner)
   }
 
   return new_error_token(scanner, "Unexpected character");
+}
+
+const char *token_type_to_string(TokenType type)
+{
+  switch (type)
+  {
+    // Single-character tokens.
+  case TOKEN_LEFT_PAREN:
+    return "(";
+  case TOKEN_RIGHT_PAREN:
+    return ")";
+  case TOKEN_LEFT_BRACE:
+    return "{";
+  case TOKEN_RIGHT_BRACE:
+    return "}";
+  case TOKEN_COMMA:
+    return ",";
+  case TOKEN_DOT:
+    return ".";
+  case TOKEN_MINUS:
+    return "-";
+  case TOKEN_PLUS:
+    return "+";
+  case TOKEN_SEMICOLON:
+    return ";";
+  case TOKEN_SLASH:
+    return "/";
+  case TOKEN_STAR:
+    return "*";
+
+  // One or two character tokens.
+  case TOKEN_BANG:
+    return "!";
+  case TOKEN_BANG_EQUAL:
+    return "!=";
+  case TOKEN_EQUAL:
+    return "=";
+  case TOKEN_EQUAL_EQUAL:
+    return "==";
+  case TOKEN_GREATER:
+    return ">";
+  case TOKEN_GREATER_EQUAL:
+    return ">=";
+  case TOKEN_LESS:
+    return "<";
+  case TOKEN_LESS_EQUAL:
+    return "<=";
+
+  // Literals.
+  case TOKEN_IDENTIFIER:
+    return "identifier";
+  case TOKEN_STRING:
+    return "string";
+  case TOKEN_NUMBER:
+    return "number";
+
+  // Keywords.
+  case TOKEN_AND:
+    return "and";
+  case TOKEN_CLASS:
+    return "class";
+  case TOKEN_ELSE:
+    return "else";
+  case TOKEN_FALSE:
+    return "false";
+  case TOKEN_FOR:
+    return "for";
+  case TOKEN_FUN:
+    return "fun";
+  case TOKEN_IF:
+    return "if";
+  case TOKEN_NIL:
+    return "nil";
+  case TOKEN_OR:
+    return "or";
+  case TOKEN_PRINT:
+    return "print";
+  case TOKEN_RETURN:
+    return "return";
+  case TOKEN_SUPER:
+    return "super";
+  case TOKEN_THIS:
+    return "this";
+  case TOKEN_TRUE:
+    return "true";
+  case TOKEN_VAR:
+    return "var";
+  case TOKEN_WHILE:
+    return "while";
+
+  case TOKEN_ERROR:
+    return "error";
+  case TOKEN_EOF:
+    return "eof";
+  }
 }
