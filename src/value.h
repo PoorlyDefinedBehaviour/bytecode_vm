@@ -32,6 +32,30 @@ typedef struct ObjString ObjString;
 //
 // String
 // Recursive algebraic data structures
+//
+// ┌─────────────────────────────┐                   ┌────────────────────────────┐
+// │    Stack                    │                   │    Heap                    │
+// │                             │                   │                            │
+// │ Value {                     │                   │                            │
+// │  type: VAL_BOOL             │                   │                            │
+// │  as: true                   │                   │                            │
+// │ }                           │                   │                            │
+// │                             │                   │   hello world\0 ◄──────────┼─────┐
+// │ Value {                     │                   │                            │     │
+// │  type: VAL_NUMBER           │                   │                            │     │
+// │  as: 10                     │                   │                            │     │
+// │ }                           │                   │                            │     │
+// │                             │                   │                            │     │
+// │ Value {                     │                   │     ObjString {            │     │
+// │  type: VAL_OBJ              │                   │      obj: Obj{             │     │
+// │  as: Obj*───────────────────┼───────────────────┼───►    type: OBJ_STRING    │     │
+// │ }                           │                   │      }                     │     │
+// │                             │                   │      length: 11            │     │
+// │                             │                   │      chars: ───────────────┼─────┘
+// │                             │                   │     }                      │
+// │                             │                   │                            │
+// │                             │                   │                            │
+// └─────────────────────────────┘                   └────────────────────────────┘
 typedef struct
 {
   ValueType type;
