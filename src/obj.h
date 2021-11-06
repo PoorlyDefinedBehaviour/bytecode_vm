@@ -33,6 +33,8 @@ struct ObjString
 
 ObjString *copy_string(const char *chars, int length);
 
+ObjString *take_string(const char *chars, int length);
+
 #define OBJ_TYPE(value) ((AS_OBJ(value))->type)
 
 // NOTE: Why did we create isObjType instead of

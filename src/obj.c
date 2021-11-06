@@ -36,3 +36,8 @@ ObjString *copy_string(const char *chars, int length)
   heapChars[length] = '\0';
   return allocate_string(heapChars, length);
 }
+
+ObjString *take_string(const char *chars, int length)
+{
+  return allocate_string(chars, length);
+}

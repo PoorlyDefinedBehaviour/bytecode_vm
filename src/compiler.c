@@ -355,7 +355,7 @@ bool compile(const char *source_code, Chunk *chunk)
 
   advance(&parser);
   expression(&parser);
-  consume(&parser, TOKEN_EOF, "Expected end of expression");
+  consume(&parser, TOKEN_EOF, "expected end of expression");
 
   end_compiler(&parser);
 
