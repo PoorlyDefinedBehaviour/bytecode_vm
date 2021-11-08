@@ -33,7 +33,7 @@ void hash_table_extend(HashTable *table, HashTable *with);
 // If [key] is not present in [table], returns NULL.
 Value *hash_table_get(HashTable *table, ObjString *key);
 
-ObjString *table_find_string(HashTable *table, const char *chars, int length, uint32_t hash);
+ObjString *hash_table_find_string(HashTable *table, const char *chars, int length, uint32_t hash);
 
 // Removes [key] from [table].
 // Returns true if [key] was found in [table]

@@ -8,6 +8,13 @@
 
 #define HASH_TABLE_MAX_LOAD 0.75
 
+static void init_table(HashTable *table)
+{
+  table->count = 0;
+  table->capacity = 0;
+  table->entries = 0;
+}
+
 HashTable new_hash_table()
 {
   HashTable table;
@@ -15,13 +22,6 @@ HashTable new_hash_table()
   init_table(&table);
 
   return table;
-}
-
-static void init_table(HashTable *table)
-{
-  table->count = 0;
-  table->capacity = 0;
-  table->entries = 0;
 }
 
 void free_hash_table(HashTable *table)
@@ -166,7 +166,7 @@ Value *hash_table_get(HashTable *table, ObjString *key)
   return &entry->value;
 }
 
-ObjString *table_find_string(HashTable *table, const char *chars, int length, uint32_t hash)
+ObjString *hash_table_find_string(HashTable *table, const char *chars, int length, uint32_t hash)
 {
   if (table->count == 0)
   {

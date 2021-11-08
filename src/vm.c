@@ -151,12 +151,6 @@ static InterpretResult run(Vm *vm)
 
     switch (instruction = READ_BYTE())
     {
-    case OP_RETURN:
-    {
-      print_value(pop(vm));
-      printf("\n");
-      return INTERPRET_OK;
-    }
     case OP_CONSTANT:
     {
       Value constant = READ_CONSTANT();
@@ -241,6 +235,12 @@ static InterpretResult run(Vm *vm)
     case OP_NOT:
     {
       push(vm, BOOL_VAL(not(pop(vm))));
+      break;
+    }
+    case OP_PRINT:
+    {
+      print_value(pop(vm));
+      printf("\n");
       break;
     }
     }

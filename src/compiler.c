@@ -36,7 +36,9 @@ typedef struct
   Precedence precedence;
 } ParseRule;
 
-static void expression();
+static void expression(Parser *parser);
+static void statement(Parser *parser);
+static void declaration(Parser *parser);
 static ParseRule *get_rule(const TokenType type);
 static void parse_precedence(Parser *parser, const Precedence precedence);
 
@@ -360,6 +362,67 @@ static ParseRule *get_rule(const TokenType type)
   return &rules[type];
 }
 
+// Returns true when the token that [parser] is currently
+// looking at is of type [type].
+// Otherwise, returns false.
+static bool current_token_is(Parser *parser, TokenType type)
+{
+  return parser->current.type == type;
+}
+
+// If the token [parser] is currently looking at is of [type],
+// advances [parser] to next token and returns true.
+// Otherwise, returns false.
+static bool advance_if_current_token_is(Parser *parser, TokenType type)
+{
+  if (!current_token_is(parser, type))
+  {
+    return false;
+  }
+
+  advance(parser);
+
+  return true;
+}
+
+static void print_statement(Parser *parser)
+{
+  // Given the following expression:
+  //
+  // print α;
+  //
+  // expression will add α to the chunk.
+  expression(parser);
+  // Consume ; after α
+  consume(parser, TOKEN_SEMICOLON);
+  // Add OP_PRINT to the chunk.
+  //
+  // When we are executing the chunk and find an OP_PRINT,
+  // we will push it into the stack, after having pushed a value,
+  // that will be used by the print operation.
+  //
+  // ┌────────┐
+  // │OP_PRINT│
+  // ├────────┤
+  // │   α    │
+  // ├────────┤
+  // │  ...   │
+  // ├────────┤
+  // │  ...   │
+  // └────────┘
+  //
+  // When we find OP_PRINT in
+  emit_byte(parser, OP_PRINT);
+}
+
+static void declaration(Parser *parser)
+{
+  if (advance_if_current_token_is(parser, TOKEN_PRINT))
+  {
+    print_statement(parser);
+  }
+}
+
 bool compile(Vm *vm, const char *source_code, Chunk *chunk)
 {
   Parser parser = new_parser(vm, source_code);
@@ -367,8 +430,11 @@ bool compile(Vm *vm, const char *source_code, Chunk *chunk)
   compiling_chunk = chunk;
 
   advance(&parser);
-  expression(&parser);
-  consume(&parser, TOKEN_EOF);
+
+  while (!current_token_is(&parser, TOKEN_EOF))
+  {
+    declaration(&parser);
+  }
 
   end_compiler(&parser);
 

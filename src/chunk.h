@@ -6,29 +6,30 @@
 
 typedef enum
 {
-		OP_CONSTANT,
-		OP_NIL,
-		OP_TRUE,
-		OP_FALSE,
-		OP_RETURN,
-		OP_NEGATE,
-		OP_ADD,
-		OP_SUBTRACT,
-		OP_MULTIPLY,
-		OP_DIVIDE,
-		OP_NOT,
-		OP_EQUAL,
-		OP_GREATER,
-		OP_LESS
+  OP_CONSTANT,
+  OP_NIL,
+  OP_TRUE,
+  OP_FALSE,
+  OP_RETURN,
+  OP_NEGATE,
+  OP_ADD,
+  OP_SUBTRACT,
+  OP_MULTIPLY,
+  OP_DIVIDE,
+  OP_NOT,
+  OP_EQUAL,
+  OP_GREATER,
+  OP_LESS,
+  OP_PRINT,
 } OpCode;
 
 typedef struct
 {
-		size_t count;
-		size_t capacity;
-		uint8_t *code;
-		ValueArray constants;
-		size_t *lines;
+  size_t count;
+  size_t capacity;
+  uint8_t *code;
+  ValueArray constants;
+  size_t *lines;
 } Chunk;
 
 Chunk new_chunk();

@@ -24,6 +24,20 @@ static Obj *allocate_object(Vm *vm, size_t size, ObjType type)
   return object;
 }
 
+// http://www.isthe.com/chongo/tech/comp/fnv/
+static uint32_t hash_string(const char *string, int length)
+{
+  uint32_t hash = 2166136261u;
+
+  for (int i = 0; i < length; i++)
+  {
+    hash ^= (uint8_t)string[i];
+    hash *= 16777619;
+  }
+
+  return hash;
+}
+
 static ObjString *allocate_string(Vm *vm, char *chars, int length)
 {
   uint32_t hash = hash_string(chars, length);
@@ -47,20 +61,6 @@ static ObjString *allocate_string(Vm *vm, char *chars, int length)
   // Interning the string
   hash_table_set(&vm->strings, string, NIL_VAL);
   return string;
-}
-
-// http://www.isthe.com/chongo/tech/comp/fnv/
-static uint32_t hash_string(const char *string, int length)
-{
-  uint32_t hash = 2166136261u;
-
-  for (int i = 0; i < length; i++)
-  {
-    hash ^= (uint8_t)string[i];
-    hash *= 16777619;
-  }
-
-  return hash;
 }
 
 ObjString *copy_string(Vm *vm, const char *chars, int length)
