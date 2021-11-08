@@ -429,8 +429,6 @@ static void print_statement(Parser *parser)
 //
 // To support that, we wrap expressions in a statement
 // and say we have an expression statement.
-//
-//
 static void expression_statement(Parser *parser)
 {
   expression(parser);
@@ -443,7 +441,7 @@ static void expression_statement(Parser *parser)
 static uint8_t identifier_constant(Parser *parser, Token *name)
 {
   Value string = OBJ_VAL(copy_string(parser, name->start, name->length));
-  // Adding the identifier string is too long to go in the bytecode,
+  // The identifier string is too long to go in the bytecode,
   // so we add it as a constant to the chunk's
   // constants and return its index because the index,
   // which will go in the bytecode.
@@ -491,7 +489,7 @@ static void var_declaration(parser)
 // Panic mode means we've found an error and haven't recovered
 // from it yet.
 //
-// The point of [synchronize] to skip tokens, until we find
+// The point of [synchronize] is to skip tokens until we find
 // a token that we consider as a new context, because if an error
 // happened the compiler will not be in a valid state, which may cause it
 // to reject parts of the code that are actually correct.
