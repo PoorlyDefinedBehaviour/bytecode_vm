@@ -24,12 +24,7 @@ void init_vm(Vm *vm)
   reset_stack(vm);
   vm->objects = NULL;
   vm->strings = new_hash_table();
-}
-
-void free_vm(Vm *vm)
-{
-  free_hash_table(&vm->strings);
-  free_objects(vm);
+  vm->globals = new_hash_table();
 }
 
 void free_object(Obj *obj)
@@ -61,6 +56,13 @@ void free_objects(Vm *vm)
     free_object(current);
     current = next;
   }
+}
+
+void free_vm(Vm *vm)
+{
+  free_hash_table(&vm->strings);
+  free_hash_table(&vm->globals);
+  free_objects(vm);
 }
 
 static Value peek(Vm *vm, size_t distance)
@@ -119,6 +121,7 @@ static InterpretResult run(Vm *vm)
 {
 #define READ_BYTE() (*vm->ip++)
 #define READ_CONSTANT() (vm->chunk->constants.values[READ_BYTE()])
+#define READ_STRING() AS_OBJSTRING(READ_CONSTANT())
 #define BINARY_OP(value_type, op)                           \
   do                                                        \
   {                                                         \
@@ -243,11 +246,27 @@ static InterpretResult run(Vm *vm)
       printf("\n");
       break;
     }
+    case OP_POP:
+    {
+      pop(vm);
+      break;
+    }
+    case OP_DEFINE_GLOBAL:
+    {
+      ObjString *identifier = READ_STRING();
+      hash_table_set(&vm->globals, identifier, peek(vm, 0));
+      // We pop the value after we added it to the vm global variables
+      // because the garbage collector may run while we are adding the
+      // identifier and its value to the globals table.
+      pop(vm);
+      break;
+    }
     }
   }
 
 #undef READ_BYTE
 #undef READ_CONSTANT
+#undef READ_STRING
 #undef BINARY_OP
 }
 

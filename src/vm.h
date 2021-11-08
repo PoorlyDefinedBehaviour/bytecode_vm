@@ -29,6 +29,8 @@ typedef struct
   // Since we will always have the same pointer for strings
   // with the same contents, string comparison is O(1).
   HashTable strings;
+  // [globals] stores global variables.
+  HashTable globals;
 } Vm;
 
 typedef enum

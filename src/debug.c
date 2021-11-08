@@ -9,7 +9,7 @@ static size_t simple_instruction(const char *name, size_t offset)
 static size_t constant_instruction(const char *name, Chunk *chunk, size_t offset)
 {
   uint8_t constant = chunk->code[offset + 1];
-  printf("%-16s %4d '", name, 0);
+  printf("%-16s %4d ", name, 0);
   print_value(chunk->constants.values[constant]);
   printf("\n");
   return offset + 2;
@@ -72,6 +72,10 @@ size_t dissamble_instruction(Chunk *chunk, size_t offset)
     return simple_instruction("OP_NOT", offset);
   case OP_PRINT:
     return simple_instruction("OP_PRINT", offset);
+  case OP_POP:
+    return simple_instruction("OP_POP", offset);
+  case OP_DEFINE_GLOBAL:
+    return constant_instruction("OP_DEFINE_GLOBAL", chunk, offset);
   default:
     printf("Unknown opcode %d\n", instruction);
     return offset + 1;

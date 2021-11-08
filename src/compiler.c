@@ -37,7 +37,6 @@ typedef struct
 } ParseRule;
 
 static void expression(Parser *parser);
-static void statement(Parser *parser);
 static void declaration(Parser *parser);
 static ParseRule *get_rule(const TokenType type);
 static void parse_precedence(Parser *parser, const Precedence precedence);
@@ -415,11 +414,138 @@ static void print_statement(Parser *parser)
   emit_byte(parser, OP_PRINT);
 }
 
+// Differences between expression and expression statement
+//
+// We can have a list of statements, that are made of
+// actual statements:
+//
+// print 2 + 2; -- print statement
+// print 3 + 3; -- print statement
+//
+// But we could we have a list of statemtents where
+// the statements aren't actually statements. They are expressions:
+//
+// f(); -- call expression which may contain side effects
+//
+// To support that, we wrap expressions in a statement
+// and say we have an expression statement.
+//
+//
+static void expression_statement(Parser *parser)
+{
+  expression(parser);
+  consume(parser, TOKEN_SEMICOLON);
+  // We are emitting OP_POP because expression statements
+  // are always discarded.
+  emit_byte(parser, OP_POP);
+}
+
+static uint8_t identifier_constant(Parser *parser, Token *name)
+{
+  Value string = OBJ_VAL(copy_string(parser, name->start, name->length));
+  // Adding the identifier string is too long to go in the bytecode,
+  // so we add it as a constant to the chunk's
+  // constants and return its index because the index,
+  // which will go in the bytecode.
+  //
+  // At runtime, we will access the chunk constants
+  // using the index that was added to the bytecode.
+  return make_constant(parser, string);
+}
+
+static uint8_t parse_variable(Parser *parser)
+{
+  consume(parser, TOKEN_IDENTIFIER);
+  return identifier_constant(parser, &parser->previous);
+}
+
+// [global] is the index of the variable in the chunk
+// constants list.
+//
+// At runtime we use [global] to access the actual value
+// thats in the chunk constants list.
+static void define_variable(Parser *parser, uint8_t global)
+{
+  emit_bytes(parser, OP_DEFINE_GLOBAL, global);
+}
+
+// var α = β;
+static void var_declaration(parser)
+{
+  uint8_t global_variable = parse_variable(parser);
+
+  consume(parser, TOKEN_EQUAL);
+
+  expression(parser);
+
+  consume(parser, TOKEN_SEMICOLON);
+
+  define_variable(parser, global_variable);
+}
+
+// What is synchronizing?
+//
+// When an error happens because some part of the code
+// is not valid, the compiler will enter panic mode.
+//
+// Panic mode means we've found an error and haven't recovered
+// from it yet.
+//
+// The point of [synchronize] to skip tokens, until we find
+// a token that we consider as a new context, because if an error
+// happened the compiler will not be in a valid state, which may cause it
+// to reject parts of the code that are actually correct.
+//
+// We do that because if there may be more errors in the source code,
+// and we want to report them all to the user before stopping.
+static void synchronize(Parser *parser)
+{
+  parser->panic_mode = false;
+
+  while (!current_token_is(parser, TOKEN_EOF))
+  {
+    if (parser->previous.type == TOKEN_SEMICOLON)
+    {
+      return;
+    }
+
+    switch (parser->current.type)
+    {
+    case TOKEN_CLASS:
+    case TOKEN_FUN:
+    case TOKEN_VAR:
+    case TOKEN_FOR:
+    case TOKEN_IF:
+    case TOKEN_WHILE:
+    case TOKEN_PRINT:
+    case TOKEN_RETURN:
+      return;
+    default:
+      // no-op
+    }
+
+    advance(parser);
+  }
+}
+
 static void declaration(Parser *parser)
 {
-  if (advance_if_current_token_is(parser, TOKEN_PRINT))
+  if (advance_if_current_token_is(parser, TOKEN_VAR))
+  {
+    var_declaration(parser);
+  }
+  else if (advance_if_current_token_is(parser, TOKEN_PRINT))
   {
     print_statement(parser);
+  }
+  else
+  {
+    expression_statement(parser);
+  }
+
+  if (parser->panic_mode)
+  {
+    synchronize(parser);
   }
 }
 
