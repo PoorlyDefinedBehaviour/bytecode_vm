@@ -3,7 +3,10 @@
     "*.tpp": "cpp",
     "cstdio": "c",
     "stdio.h": "c",
-    "*.tcc": "c"
+    "*.tcc": "c",
+    "istream": "c",
+    "numeric": "c",
+    "ostream": "c"
   },
   "terminal.integrated.shell.windows": "cmd.exe"
 }

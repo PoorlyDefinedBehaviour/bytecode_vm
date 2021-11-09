@@ -255,6 +255,8 @@ static InterpretResult run(Vm *vm)
     }
     case OP_DEFINE_GLOBAL:
     {
+      // NOTE: could we use an array and index into it
+      // instead of a hash table?
       ObjString *identifier = READ_STRING();
       hash_table_set(&vm->globals, identifier, peek(vm, 0));
       // We pop the value after we added it to the vm global variables
@@ -276,6 +278,26 @@ static InterpretResult run(Vm *vm)
       }
 
       push(vm, *value);
+      break;
+    }
+    case OP_SET_GLOBAL:
+    {
+      ObjString *identifier = READ_STRING();
+      Value value = peek(vm, 0);
+
+      bool variable_wasnt_in_table = hash_table_set(&vm->globals, identifier, value);
+
+      // Remove [value] from the stack because
+      // assignment is not an expression.
+      pop(vm);
+
+      if (variable_wasnt_in_table)
+      {
+        hash_table_delete(&vm->globals, identifier);
+        runtime_error("undefined variable '%s'", identifier->chars);
+        return INTERPRET_RUNTIME_ERROR;
+      }
+
       break;
     }
     case OP_RETURN:

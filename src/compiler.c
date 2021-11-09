@@ -27,7 +27,7 @@ typedef enum
   PREC_PRIMARY
 } Precedence;
 
-typedef void (*ParseFunction)(Parser *parser);
+typedef void (*ParseFunction)(Parser *parser, Precedence precedence);
 
 typedef struct
 {
@@ -187,7 +187,7 @@ static void parse_precedence(Parser *parser, const Precedence precedence)
     return;
   }
 
-  prefix_rule(parser);
+  prefix_rule(parser, precedence);
 
   while (precedence <= get_rule(parser->current.type)->precedence)
   {
@@ -195,7 +195,7 @@ static void parse_precedence(Parser *parser, const Precedence precedence)
 
     ParseFunction infix_rule = get_rule(parser->previous.type)->infix;
 
-    infix_rule(parser);
+    infix_rule(parser, precedence);
   }
 }
 
@@ -204,13 +204,13 @@ static void expression(Parser *parser)
   parse_precedence(parser, PREC_ASSIGNMENT);
 }
 
-static void grouping(Parser *parser)
+static void grouping(Parser *parser, Precedence _)
 {
   expression(parser);
   consume(parser, TOKEN_RIGHT_PAREN);
 }
 
-static void unary(Parser *parser)
+static void unary(Parser *parser, Precedence _)
 {
   parse_precedence(parser, PREC_UNARY);
 
@@ -231,13 +231,13 @@ static void unary(Parser *parser)
   }
 }
 
-static void number(Parser *parser)
+static void number(Parser *parser, Precedence _)
 {
   const double value = strtod(parser->previous.start, NULL);
   emit_constant(parser, NUMBER_VAL(value));
 }
 
-static void string(Parser *parser)
+static void string(Parser *parser, Precedence _)
 {
   // Given the following string "hello world":
   // start + 1 removes the first " and
@@ -263,19 +263,56 @@ static uint8_t identifier_constant(Parser *parser, Token *name)
   return make_constant(parser, string);
 }
 
-static void named_variable(Parser *parser, Token name)
+// Returns true when the token that [parser] is currently
+// looking at is of type [type].
+// Otherwise, returns false.
+static bool current_token_is(Parser *parser, TokenType type)
+{
+  return parser->current.type == type;
+}
+
+// If the token [parser] is currently looking at is of [type],
+// advances [parser] to next token and returns true.
+// Otherwise, returns false.
+static bool advance_if_current_token_is(Parser *parser, TokenType type)
+{
+  if (!current_token_is(parser, type))
+  {
+    return false;
+  }
+
+  advance(parser);
+
+  return true;
+}
+
+static void named_variable(Parser *parser, Token name, Precedence precedence)
 {
   // We add the identifier to the chunk constants
   // and add its index to the bytecode.
   // At runtime we will get the identifier from the chunk
   // constants using the index that's in the bytecode.
   uint8_t arg = identifier_constant(parser, &name);
-  emit_bytes(parser, OP_GET_GLOBAL, arg);
+
+  // If variable is being used in assigment:
+  // α = β
+  if (precedence <= PREC_ASSIGNMENT && advance_if_current_token_is(parser, TOKEN_EQUAL))
+  {
+    // Compile β since α has already been compiled.
+    expression(parser);
+    emit_bytes(parser, OP_SET_GLOBAL, arg);
+  }
+  else
+  {
+    // If variable is not being used in assignment
+    // we just fetch it from the global environment.
+    emit_bytes(parser, OP_GET_GLOBAL, arg);
+  }
 }
 
-static void variable(Parser *parser)
+static void variable(Parser *parser, Precedence precedence)
 {
-  named_variable(parser, parser->previous);
+  named_variable(parser, parser->previous, precedence);
 }
 
 static void binary(Parser *parser)
@@ -387,29 +424,6 @@ ParseRule rules[] = {
 static ParseRule *get_rule(const TokenType type)
 {
   return &rules[type];
-}
-
-// Returns true when the token that [parser] is currently
-// looking at is of type [type].
-// Otherwise, returns false.
-static bool current_token_is(Parser *parser, TokenType type)
-{
-  return parser->current.type == type;
-}
-
-// If the token [parser] is currently looking at is of [type],
-// advances [parser] to next token and returns true.
-// Otherwise, returns false.
-static bool advance_if_current_token_is(Parser *parser, TokenType type)
-{
-  if (!current_token_is(parser, type))
-  {
-    return false;
-  }
-
-  advance(parser);
-
-  return true;
 }
 
 static void print_statement(Parser *parser)

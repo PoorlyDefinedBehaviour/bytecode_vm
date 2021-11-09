@@ -78,6 +78,8 @@ size_t dissamble_instruction(Chunk *chunk, size_t offset)
     return constant_instruction("OP_DEFINE_GLOBAL", chunk, offset);
   case OP_GET_GLOBAL:
     return constant_instruction("OP_GET_GLOBAL", chunk, offset);
+  case OP_SET_GLOBAL:
+    return constant_instruction("OP_SET_GLOBAL", chunk, offset);
   default:
     printf("Unknown opcode %d\n", instruction);
     return offset + 1;
