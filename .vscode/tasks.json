@@ -16,7 +16,7 @@
         "isDefault": true
       },
       "problemMatcher": "$gcc",
-      "command": "gcc -Wall -Wextra -Wpedantic -std=c11 src/*.c -o bin/main && bin/main"
+      "command": "gcc -Wall -Wextra -Wpedantic -std=c11 src/*.c -o bin/main && bin/main ./main.lang"
     }
   ]
 }

@@ -1,0 +1,3 @@
+var name = "world";
+var message = name + " world";
+print message;

@@ -250,6 +250,34 @@ static void string(Parser *parser)
   emit_constant(parser, OBJ_VAL(string));
 }
 
+static uint8_t identifier_constant(Parser *parser, Token *name)
+{
+  Value string = OBJ_VAL(copy_string(parser, name->start, name->length));
+  // The identifier string is too long to go in the bytecode,
+  // so we add it as a constant to the chunk's
+  // constants and return its index because the index,
+  // which will go in the bytecode.
+  //
+  // At runtime, we will access the chunk constants
+  // using the index that was added to the bytecode.
+  return make_constant(parser, string);
+}
+
+static void named_variable(Parser *parser, Token name)
+{
+  // We add the identifier to the chunk constants
+  // and add its index to the bytecode.
+  // At runtime we will get the identifier from the chunk
+  // constants using the index that's in the byte code.
+  uint8_t arg = identifier_constant(parser, &name);
+  emit_bytes(parser, OP_GET_GLOBAL, arg);
+}
+
+static void variable(Parser *parser)
+{
+  named_variable(parser, parser->previous);
+}
+
 static void binary(Parser *parser)
 {
   const TokenType operator_type = parser->previous.type;
@@ -333,7 +361,7 @@ ParseRule rules[] = {
     [TOKEN_GREATER_EQUAL] = {NULL, binary, PREC_COMPARISON},
     [TOKEN_LESS] = {NULL, binary, PREC_COMPARISON},
     [TOKEN_LESS_EQUAL] = {NULL, binary, PREC_COMPARISON},
-    [TOKEN_IDENTIFIER] = {NULL, NULL, PREC_NONE},
+    [TOKEN_IDENTIFIER] = {variable, NULL, PREC_NONE},
     [TOKEN_STRING] = {string, NULL, PREC_NONE},
     [TOKEN_NUMBER] = {number, NULL, PREC_NONE},
     [TOKEN_AND] = {NULL, NULL, PREC_NONE},
@@ -438,19 +466,6 @@ static void expression_statement(Parser *parser)
   emit_byte(parser, OP_POP);
 }
 
-static uint8_t identifier_constant(Parser *parser, Token *name)
-{
-  Value string = OBJ_VAL(copy_string(parser, name->start, name->length));
-  // The identifier string is too long to go in the bytecode,
-  // so we add it as a constant to the chunk's
-  // constants and return its index because the index,
-  // which will go in the bytecode.
-  //
-  // At runtime, we will access the chunk constants
-  // using the index that was added to the bytecode.
-  return make_constant(parser, string);
-}
-
 static uint8_t parse_variable(Parser *parser)
 {
   consume(parser, TOKEN_IDENTIFIER);
@@ -468,7 +483,7 @@ static void define_variable(Parser *parser, uint8_t global)
 }
 
 // var α = β;
-static void var_declaration(parser)
+static void var_declaration(Parser *parser)
 {
   uint8_t global_variable = parse_variable(parser);
 
@@ -518,8 +533,7 @@ static void synchronize(Parser *parser)
     case TOKEN_PRINT:
     case TOKEN_RETURN:
       return;
-    default:
-      // no-op
+    default:; /// no-op
     }
 
     advance(parser);

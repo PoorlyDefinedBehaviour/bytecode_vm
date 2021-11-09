@@ -138,7 +138,7 @@ static InterpretResult run(Vm *vm)
   for (;;)
   {
 #ifdef DEBUG_TRACE_EXECUTION
-    printf("          ");
+    printf("[START] Stack\n");
 
     for (Value *slot = vm->stack; slot < vm->stack_top; slot += 1)
     {
@@ -146,6 +146,8 @@ static InterpretResult run(Vm *vm)
       print_value(*slot);
       printf(" ]");
     }
+
+    printf("[END] Stack\n");
 
     dissamble_instruction(vm->chunk, vm->ip - vm->chunk->code);
 #endif
@@ -261,6 +263,23 @@ static InterpretResult run(Vm *vm)
       pop(vm);
       break;
     }
+    case OP_GET_GLOBAL:
+    {
+      ObjString *identifier = READ_STRING();
+
+      Value *value = hash_table_get(&vm->globals, identifier);
+
+      if (value == NULL)
+      {
+        runtime_error(vm, "undefined variable '%s'", identifier->chars);
+        return INTERPRET_RUNTIME_ERROR;
+      }
+
+      push(vm, *value);
+      break;
+    }
+    case OP_RETURN:
+      return INTERPRET_OK;
     }
   }
 
