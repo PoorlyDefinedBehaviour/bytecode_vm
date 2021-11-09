@@ -268,7 +268,7 @@ static void named_variable(Parser *parser, Token name)
   // We add the identifier to the chunk constants
   // and add its index to the bytecode.
   // At runtime we will get the identifier from the chunk
-  // constants using the index that's in the byte code.
+  // constants using the index that's in the bytecode.
   uint8_t arg = identifier_constant(parser, &name);
   emit_bytes(parser, OP_GET_GLOBAL, arg);
 }
