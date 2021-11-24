@@ -36,8 +36,139 @@ typedef struct
   Precedence precedence;
 } ParseRule;
 
+// We could use a chain of hash tables to keep track
+// of variables declared in each scope, but that's too slow.
+//
+// To keep track of variables we will number them based on how
+// many scopes they are nested in.
+typedef struct
+{
+  Token name;
+  // [depth] keeps track of how many scopes are surrounding
+  // this local.
+  // [depth] will be 0 when the variable is declared
+  // in the global scope.
+  // TODO: will [depth] ever be 0 since we have another
+  // mechanism to declare globals?
+  int depth;
+} Local;
+
+typedef struct
+{
+  // List of locals that are in scope during each point
+  // during the compilation process.
+  // The order of the local in [locals] is the order which
+  // the local is declared in the code.
+  Local locals[UINT8_COUNT];
+  // [local_count] counts how many locals are in scope,
+  // in another words, [local_count] is the length of [locals].
+  int local_count;
+  // [scope_depth] keeps track of the number of blocks
+  // that introduce new scopes surrouding the current piece of
+  // code that we are compiling.
+  int scope_depth;
+} Compiler;
+
+Compiler new_compiler()
+{
+  Compiler compiler;
+
+  compiler.local_count = 0;
+  compiler.scope_depth = 0;
+
+  return compiler;
+}
+
+static bool identifiers_equal(Token *a, Token *b)
+{
+  if (a->length != b->length)
+  {
+    return false;
+  }
+
+  return memcmp(a->start, b->start, a->length) == 0;
+}
+
+// Looks for a local variable by name.
+// If the variable is found, returns its index.
+// If the variable is not found, returns -1.
+static int resolve_local(Compiler *compiler, Token *name)
+{
+  for (int i = compiler->local_count - 1; i >= 0; i--)
+  {
+    Local *local = &compiler->locals[i];
+
+    if (identifiers_equal(name, &local->name))
+    {
+      return i;
+    }
+  }
+
+  return -1;
+}
+
+// A scope can only contain [UINT8_COUNT] local variable declarations.
+static bool reached_maximum_number_of_locals(Compiler *compiler)
+{
+  return compiler->local_count == UINT8_COUNT;
+}
+
+// Adds token that contains the local variable name
+// to the list of locals.
+static void add_local(Compiler *compiler, Parser *parser, Token name)
+{
+  if (reached_maximum_number_of_locals(compiler))
+  {
+    error(parser, "Too many local variable declarations");
+    return;
+  }
+  Local *local = &compiler->locals[compiler->local_count++];
+  local->name = name;
+  local->depth = compiler->scope_depth;
+}
+
+static bool is_compiling_local_scope(Compiler *compiler)
+{
+  return compiler->scope_depth > 0;
+}
+
+static void begin_scope(Compiler *compiler)
+{
+  compiler->scope_depth++;
+}
+
+// Emits opcode to pop local variables that are in the current
+// scope from the stack starting from the variables that were
+// declared last.
+static void clear_locals_in_the_current_scope(Compiler *compiler, Parser *parser)
+{
+  while (compiler->local_count > 0 &&
+         compiler->locals[compiler->local_count - 1].depth == compiler->scope_depth)
+  {
+    // TODO:
+    // A operation that pops n values from the stack
+    // could be an optimization instead of emiting [OP_POP]
+    // n times.
+    emit_byte(parser, OP_POP);
+    compiler->local_count--;
+  }
+}
+
+static void end_scope(Compiler *compiler, Parser *parser)
+{
+  // When we leave a scope, the variables inside of it should
+  // be cleaned because they won't be used anymore.
+  //
+  // { -- begin_scope
+  //    var x = 10
+  // } -- end_scope (x can be cleared)
+  clear_locals_in_the_current_scope(compiler, parser);
+
+  compiler->scope_depth--;
+}
+
 static void expression(Parser *parser);
-static void declaration(Parser *parser);
+static void declaration(Compiler *compiler, Parser *parser);
 static ParseRule *get_rule(const TokenType type);
 static void parse_precedence(Parser *parser, const Precedence precedence);
 
@@ -286,13 +417,27 @@ static bool advance_if_current_token_is(Parser *parser, TokenType type)
   return true;
 }
 
-static void named_variable(Parser *parser, Token name, Precedence precedence)
+static void named_variable(Compiler *compiler, Parser *parser, Token name, Precedence precedence)
 {
-  // We add the identifier to the chunk constants
-  // and add its index to the bytecode.
-  // At runtime we will get the identifier from the chunk
-  // constants using the index that's in the bytecode.
-  uint8_t arg = identifier_constant(parser, &name);
+  uint8_t get_op, set_op;
+
+  int arg = resolve_local(compiler, &name);
+  if (arg != -1)
+  {
+    get_op = OP_GET_LOCAL;
+    set_op = OP_SET_LOCAL;
+  }
+  else
+  {
+
+    // We add the identifier to the chunk constants
+    // and add its index to the bytecode.
+    // At runtime we will get the identifier from the chunk
+    // constants using the index that's in the bytecode.
+    arg = identifier_constant(parser, &name);
+    get_op = OP_GET_GLOBAL;
+    set_op = OP_SET_GLOBAL;
+  }
 
   // If variable is being used in assigment:
   // α = β
@@ -300,19 +445,18 @@ static void named_variable(Parser *parser, Token name, Precedence precedence)
   {
     // Compile β since α has already been compiled.
     expression(parser);
-    emit_bytes(parser, OP_SET_GLOBAL, arg);
+    emit_bytes(parser, set_op, arg);
   }
   else
   {
     // If variable is not being used in assignment
-    // we just fetch it from the global environment.
-    emit_bytes(parser, OP_GET_GLOBAL, arg);
+    emit_bytes(parser, get_op, arg);
   }
 }
 
-static void variable(Parser *parser, Precedence precedence)
+static void variable(Compiler *compiler, Parser *parser, Precedence precedence)
 {
-  named_variable(parser, parser->previous, precedence);
+  named_variable(compiler, parser, parser->previous, precedence);
 }
 
 static void binary(Parser *parser)
@@ -480,9 +624,30 @@ static void expression_statement(Parser *parser)
   emit_byte(parser, OP_POP);
 }
 
-static uint8_t parse_variable(Parser *parser)
+static void declare_variable(Compiler *compiler, Parser *parser)
+{
+  if (!is_compiling_local_scope(compiler))
+  {
+    return;
+  }
+
+  Token *name = &parser->previous;
+  add_local(compiler, parser, *name);
+}
+
+static uint8_t parse_variable(Compiler *compiler, Parser *parser)
 {
   consume(parser, TOKEN_IDENTIFIER);
+
+  declare_variable(compiler, parser);
+
+  if (is_compiling_local_scope(compiler))
+  {
+    // Local variables will not be looked up by name at runtime,
+    // so theres no need to add the variable's name to the constant table.
+    return 0;
+  }
+
   return identifier_constant(parser, &parser->previous);
 }
 
@@ -491,15 +656,20 @@ static uint8_t parse_variable(Parser *parser)
 //
 // At runtime we use [global] to access the actual value
 // thats in the chunk constants list.
-static void define_variable(Parser *parser, uint8_t global)
+static void define_variable(Compiler *compiler, Parser *parser, uint8_t global)
 {
+  if (is_compiling_local_scope(compiler))
+  {
+    return;
+  }
+
   emit_bytes(parser, OP_DEFINE_GLOBAL, global);
 }
 
 // var α = β;
-static void var_declaration(Parser *parser)
+static void var_declaration(Compiler *compiler, Parser *parser)
 {
-  uint8_t global_variable = parse_variable(parser);
+  uint8_t global_variable = parse_variable(compiler, parser);
 
   consume(parser, TOKEN_EQUAL);
 
@@ -507,7 +677,7 @@ static void var_declaration(Parser *parser)
 
   consume(parser, TOKEN_SEMICOLON);
 
-  define_variable(parser, global_variable);
+  define_variable(compiler, parser, global_variable);
 }
 
 // What is synchronizing?
@@ -554,15 +724,31 @@ static void synchronize(Parser *parser)
   }
 }
 
-static void declaration(Parser *parser)
+static void block(Compiler *compiler, Parser *parser)
+{
+  while (!current_token_is(parser, TOKEN_RIGHT_BRACE) && !current_token_is(parser, TOKEN_EOF))
+  {
+    declaration(compiler, parser);
+  }
+
+  consume(parser, TOKEN_RIGHT_BRACE);
+}
+
+static void declaration(Compiler *compiler, Parser *parser)
 {
   if (advance_if_current_token_is(parser, TOKEN_VAR))
   {
-    var_declaration(parser);
+    var_declaration(compiler, parser);
   }
   else if (advance_if_current_token_is(parser, TOKEN_PRINT))
   {
     print_statement(parser);
+  }
+  else if (advance_if_current_token_is(parser, TOKEN_LEFT_BRACE))
+  {
+    begin_scope(compiler);
+    block(compiler, parser);
+    end_scope(compiler, parser);
   }
   else
   {
@@ -578,6 +764,7 @@ static void declaration(Parser *parser)
 bool compile(Vm *vm, const char *source_code, Chunk *chunk)
 {
   Parser parser = new_parser(vm, source_code);
+  Compiler compiler = new_compiler();
 
   compiling_chunk = chunk;
 
@@ -585,7 +772,7 @@ bool compile(Vm *vm, const char *source_code, Chunk *chunk)
 
   while (!current_token_is(&parser, TOKEN_EOF))
   {
-    declaration(&parser);
+    declaration(&compiler, &parser);
   }
 
   end_compiler(&parser);

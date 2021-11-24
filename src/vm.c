@@ -300,6 +300,20 @@ static InterpretResult run(Vm *vm)
 
       break;
     }
+    case OP_GET_LOCAL:
+      // We push the value onto the stack because
+      // other operations expect values to always be at the top
+      // of the stack.
+      uint8_t slot = READ_BYTE();
+      push(vm, vm->stack[slot]);
+      break;
+    case OP_SET_LOCAL:
+    {
+      uint8_t slot = READ_BYTE();
+
+      vm->stack[slot] = pop(vm);
+      break;
+    }
     case OP_RETURN:
       return INTERPRET_OK;
     }

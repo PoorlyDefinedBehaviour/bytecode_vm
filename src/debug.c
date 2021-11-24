@@ -15,6 +15,13 @@ static size_t constant_instruction(const char *name, Chunk *chunk, size_t offset
   return offset + 2;
 }
 
+static size_t byte_instruction(const char *name, Chunk *chunk, size_t offset)
+{
+  uint8_t slot = chunk->code[offset + 1];
+  printf("%-16s $d\n", name, slot);
+  return offset + 2;
+}
+
 void dissasamble_chunk(Chunk *chunk, const char *name)
 {
   printf("== %s ==\n", name);
@@ -80,6 +87,10 @@ size_t dissamble_instruction(Chunk *chunk, size_t offset)
     return constant_instruction("OP_GET_GLOBAL", chunk, offset);
   case OP_SET_GLOBAL:
     return constant_instruction("OP_SET_GLOBAL", chunk, offset);
+  case OP_GET_LOCAL:
+    return byte_instruction("OP_GET_LOCAL", chunk, offset);
+  case OP_SET_LOCAL:
+    return byte_instruction("OP_SET_LOCAL", chunk, offset);
   default:
     printf("Unknown opcode %d\n", instruction);
     return offset + 1;

@@ -6,7 +6,8 @@
     "*.tcc": "c",
     "istream": "c",
     "numeric": "c",
-    "ostream": "c"
+    "ostream": "c",
+    "typeinfo": "c"
   },
   "terminal.integrated.shell.windows": "cmd.exe"
 }
