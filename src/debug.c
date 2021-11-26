@@ -103,6 +103,8 @@ size_t dissamble_instruction(Chunk *chunk, size_t offset)
     return jump_instruction("OP_JUMP", 1, chunk, offset);
   case OP_JUMP_IF_FALSE:
     return jump_instruction("OP_JUMP_IF_FALSE", 1, chunk, offset);
+  case OP_LOOP:
+    return jump_instruction("OP_LOOP", -1, chunk, offset);
   default:
     printf("Unknown opcode %d\n", instruction);
     return offset + 1;

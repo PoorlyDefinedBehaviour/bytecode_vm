@@ -1,1 +1,1 @@
-if true and 2 > 1 { print "then"; } else { print "else"; }
+var i = 0; while i < 3 { print i; i = i + 1; }

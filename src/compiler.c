@@ -28,15 +28,6 @@ typedef enum
   PREC_PRIMARY
 } Precedence;
 
-typedef void (*ParseFunction)(Parser *parser, Precedence precedence);
-
-typedef struct
-{
-  ParseFunction prefix;
-  ParseFunction infix;
-  Precedence precedence;
-} ParseRule;
-
 // We could use a chain of hash tables to keep track
 // of variables declared in each scope, but that's too slow.
 //
@@ -80,10 +71,19 @@ Compiler new_compiler()
   return compiler;
 }
 
-static void expression(Parser *parser);
+typedef void (*ParseFunction)(Compiler *compiler, Parser *parser, Precedence precedence);
+
+typedef struct
+{
+  ParseFunction prefix;
+  ParseFunction infix;
+  Precedence precedence;
+} ParseRule;
+
+static void expression(Compiler *compiler, Parser *parser);
 static void declaration(Compiler *compiler, Parser *parser);
 static ParseRule *get_rule(const TokenType type);
-static void parse_precedence(Parser *parser, const Precedence precedence);
+static void parse_precedence(Compiler *compiler, Parser *parser, const Precedence precedence);
 static void error_at(Parser *parser, const Token *token, const char *message);
 static void advance(Parser *parser);
 static void statement(Compiler *compiler, Parser *parser);
@@ -312,7 +312,7 @@ static void end_compiler(Parser *parser)
 #endif
 }
 
-static void parse_precedence(Parser *parser, const Precedence precedence)
+static void parse_precedence(Compiler *compiler, Parser *parser, const Precedence precedence)
 {
   advance(parser);
 
@@ -324,7 +324,7 @@ static void parse_precedence(Parser *parser, const Precedence precedence)
     return;
   }
 
-  prefix_rule(parser, precedence);
+  prefix_rule(compiler, parser, precedence);
 
   while (precedence <= get_rule(parser->current.type)->precedence)
   {
@@ -332,28 +332,28 @@ static void parse_precedence(Parser *parser, const Precedence precedence)
 
     ParseFunction infix_rule = get_rule(parser->previous.type)->infix;
 
-    infix_rule(parser, precedence);
+    infix_rule(compiler, parser, precedence);
   }
 }
 
-static void expression(Parser *parser)
+static void expression(Compiler *compiler, Parser *parser)
 {
-  parse_precedence(parser, PREC_ASSIGNMENT);
+  parse_precedence(compiler, parser, PREC_ASSIGNMENT);
 }
 
-static void grouping(Parser *parser, Precedence _)
+static void grouping(Compiler *compiler, Parser *parser, Precedence _)
 {
-  expression(parser);
+  expression(compiler, parser);
   consume(parser, TOKEN_RIGHT_PAREN);
 }
 
-static void unary(Parser *parser, Precedence _)
+static void unary(Compiler *compiler, Parser *parser, Precedence _)
 {
-  parse_precedence(parser, PREC_UNARY);
+  parse_precedence(compiler, parser, PREC_UNARY);
 
   const TokenType operator_type = parser->previous.type;
 
-  expression(parser);
+  expression(compiler, parser);
 
   switch (operator_type)
   {
@@ -368,24 +368,24 @@ static void unary(Parser *parser, Precedence _)
   }
 }
 
-static void number(Parser *parser, Precedence _)
+static void number(Compiler *_compiler, Parser *parser, Precedence _)
 {
   const double value = strtod(parser->previous.start, NULL);
   emit_constant(parser, NUMBER_VAL(value));
 }
 
-static void and_(Parser *parser, Precedence _)
+static void and_(Compiler *compiler, Parser *parser, Precedence _)
 {
   int end_jump = emit_jump(parser, OP_JUMP_IF_FALSE);
 
   emit_byte(parser, OP_POP);
 
-  parse_precedence(parser, PREC_AND);
+  parse_precedence(compiler, parser, PREC_AND);
 
   patch_jump(end_jump);
 }
 
-static void or_(Parser *parser, Precedence _)
+static void or_(Compiler *compiler, Parser *parser, Precedence _)
 {
   int else_jump = emit_jump(parser, OP_JUMP_IF_FALSE);
   int end_jump = emit_jump(parser, OP_JUMP);
@@ -394,7 +394,7 @@ static void or_(Parser *parser, Precedence _)
 
   emit_byte(parser, OP_POP);
 
-  parse_precedence(parser, PREC_OR);
+  parse_precedence(compiler, parser, PREC_OR);
 
   patch_jump(end_jump);
 
@@ -411,7 +411,7 @@ static void or_(Parser *parser, Precedence _)
   // OP_JUMP          jumps to here because of patch_jump(end_jump)
 }
 
-static void string(Parser *parser, Precedence _)
+static void string(Compiler *_compiler, Parser *parser, Precedence _)
 {
   // Given the following string "hello world":
   // start + 1 removes the first " and
@@ -486,7 +486,7 @@ static void named_variable(Compiler *compiler, Parser *parser, Token name, Prece
   if (precedence <= PREC_ASSIGNMENT && advance_if_current_token_is(parser, TOKEN_EQUAL))
   {
     // Compile β since α has already been compiled.
-    expression(parser);
+    expression(compiler, parser);
     emit_bytes(parser, set_op, arg);
   }
   else
@@ -501,13 +501,13 @@ static void variable(Compiler *compiler, Parser *parser, Precedence precedence)
   named_variable(compiler, parser, parser->previous, precedence);
 }
 
-static void binary(Parser *parser)
+static void binary(Compiler *compiler, Parser *parser, Precedence _)
 {
   const TokenType operator_type = parser->previous.type;
 
   ParseRule *rule = get_rule(operator_type);
 
-  parse_precedence(parser, (Precedence)(rule->precedence + 1));
+  parse_precedence(compiler, parser, (Precedence)(rule->precedence + 1));
 
   switch (operator_type)
   {
@@ -546,7 +546,7 @@ static void binary(Parser *parser)
   }
 }
 
-static void literal(Parser *parser)
+static void literal(Compiler *_compiler, Parser *parser, Precedence _)
 {
   switch (parser->previous.type)
   {
@@ -612,14 +612,14 @@ static ParseRule *get_rule(const TokenType type)
   return &rules[type];
 }
 
-static void print_statement(Parser *parser)
+static void print_statement(Compiler *compiler, Parser *parser)
 {
   // Given the following expression:
   //
   // print α;
   //
   // expression will add α to the chunk.
-  expression(parser);
+  expression(compiler, parser);
   // Consume ; after α
   consume(parser, TOKEN_SEMICOLON);
   // Add OP_PRINT to the chunk.
@@ -657,9 +657,9 @@ static void print_statement(Parser *parser)
 //
 // To support that, we wrap expressions in a statement
 // and say we have an expression statement.
-static void expression_statement(Parser *parser)
+static void expression_statement(Compiler *compiler, Parser *parser)
 {
-  expression(parser);
+  expression(compiler, parser);
   consume(parser, TOKEN_SEMICOLON);
   // We are emitting OP_POP because expression statements
   // are always discarded.
@@ -715,7 +715,7 @@ static void var_declaration(Compiler *compiler, Parser *parser)
 
   consume(parser, TOKEN_EQUAL);
 
-  expression(parser);
+  expression(compiler, parser);
 
   consume(parser, TOKEN_SEMICOLON);
 
@@ -802,7 +802,7 @@ static void patch_jump(int offset)
 static void if_statement(Compiler *compiler, Parser *parser)
 {
   // Parse condition.
-  expression(parser);
+  expression(compiler, parser);
 
   // We dont know how many instructions the consequence branch
   // will generate, because of that we emit a jump that will be updated later.
@@ -833,6 +833,54 @@ static void if_statement(Compiler *compiler, Parser *parser)
   patch_jump(else_jump);
 }
 
+static void emit_loop(Parser *parser, int loop_start)
+{
+  emit_byte(parser, OP_LOOP);
+
+  int offset = get_current_chunk()->count - loop_start + 2;
+  if (offset > UINT16_MAX)
+  {
+    error(parser, "loop body too large");
+  }
+
+  emit_byte(parser, (offset >> 8) & 0xff);
+  emit_byte(parser, offset & 0xff);
+}
+
+// while expression { List<Statement> }
+static void while_statement(Compiler *compiler, Parser *parser)
+{
+  int loop_start = get_current_chunk()->count;
+  // Emit condition instructions.
+  expression(compiler, parser);
+
+  int exit_jump = emit_jump(parser, OP_JUMP_IF_FALSE);
+
+  emit_byte(parser, OP_POP);
+
+  // Emit body instructions.
+  statement(compiler, parser);
+
+  // Jump back to the condition.
+  emit_loop(parser, loop_start);
+
+  patch_jump(exit_jump);
+
+  emit_byte(parser, OP_POP);
+
+  // This function generates the following instructions:
+  //
+  // OP_CODE_1        |
+  // OP_CODE_2        | condition instructions emitted by expression(compiler, parser)
+  // OP_CODE_N        |
+  // OP_JUMP_IF_FALSE emitted by emit_jump(parser, OP_JUMP_IF_FALSE)
+  // OP_POP           emitted by emit_byte(parser, OP_POP)
+  // OP_CODE_1        |
+  // OP_CODE_2        | body instructions emitted by statement(compiler, parser)
+  // OP_CODE_N        |
+  // OP_POP           OP_JUMP_IF_FALSE jumps to here because of patch_jump(exit_jump)
+}
+
 static void statement(Compiler *compiler, Parser *parser)
 {
   if (advance_if_current_token_is(parser, TOKEN_VAR))
@@ -841,11 +889,15 @@ static void statement(Compiler *compiler, Parser *parser)
   }
   else if (advance_if_current_token_is(parser, TOKEN_PRINT))
   {
-    print_statement(parser);
+    print_statement(compiler, parser);
   }
   else if (advance_if_current_token_is(parser, TOKEN_IF))
   {
     if_statement(compiler, parser);
+  }
+  else if (advance_if_current_token_is(parser, TOKEN_WHILE))
+  {
+    while_statement(compiler, parser);
   }
   else if (advance_if_current_token_is(parser, TOKEN_LEFT_BRACE))
   {
@@ -855,7 +907,7 @@ static void statement(Compiler *compiler, Parser *parser)
   }
   else
   {
-    expression_statement(parser);
+    expression_statement(compiler, parser);
   }
 }
 

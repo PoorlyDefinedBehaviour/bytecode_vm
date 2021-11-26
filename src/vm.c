@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdarg.h>
+#include <string.h>
 
 #include "vm.h"
 #include "compiler.h"
@@ -355,6 +356,12 @@ static InterpretResult run(Vm *vm)
     {
       uint16_t offset = READ_SHORT();
       vm->ip += offset;
+      break;
+    }
+    case OP_LOOP:
+    {
+      uint16_t offset = READ_SHORT();
+      vm->ip -= offset;
       break;
     }
     case OP_RETURN:
