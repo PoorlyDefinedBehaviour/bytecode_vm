@@ -847,7 +847,7 @@ static void emit_loop(Parser *parser, int loop_start)
   emit_byte(parser, offset & 0xff);
 }
 
-// while expression { List<Statement> }
+// while expression { List<statement> }
 static void while_statement(Compiler *compiler, Parser *parser)
 {
   int loop_start = get_current_chunk()->count;
@@ -881,6 +881,54 @@ static void while_statement(Compiler *compiler, Parser *parser)
   // OP_POP           OP_JUMP_IF_FALSE jumps to here because of patch_jump(exit_jump)
 }
 
+// for x = expression; expression; expression { List<statement> }
+static void for_statement(Compiler *compiler, Parser *parser)
+{
+  // for loops declares a variable in the initiailizer,
+  // the variable in the initializer should be availabe only
+  // inside the for loop body. Because of that we create
+  // a new scope before emitting the for loop initializer instructions.
+  begin_scope(compiler);
+
+  // Parse initializer.
+  var_declaration(compiler, parser);
+
+    // Condition position in the bytecode.
+  int loop_start = get_current_chunk()->count;
+
+  // Parse condition.
+  expression(compiler, parser);
+
+  consume(parser, TOKEN_SEMICOLON);
+
+  int exit_jump = emit_jump(parser, OP_JUMP_IF_FALSE);
+  emit_byte(parser, OP_POP);
+
+  int body_jump = emit_jump(parser, OP_JUMP);
+
+  int side_effect_start = get_current_chunk()->count;
+
+  // Parse side effect.
+  expression(compiler, parser);
+
+  emit_byte(parser, OP_POP);
+
+  emit_loop(parser, loop_start);
+  loop_start = side_effect_start;
+  patch_jump(body_jump);
+
+  // Parse loop body.
+  statement(compiler, parser);
+
+  emit_loop(parser, loop_start);
+
+  patch_jump(exit_jump);
+
+  emit_byte(parser, OP_POP);
+
+  end_scope(compiler, parser);
+}
+
 static void statement(Compiler *compiler, Parser *parser)
 {
   if (advance_if_current_token_is(parser, TOKEN_VAR))
@@ -890,6 +938,10 @@ static void statement(Compiler *compiler, Parser *parser)
   else if (advance_if_current_token_is(parser, TOKEN_PRINT))
   {
     print_statement(compiler, parser);
+  }
+  else if (advance_if_current_token_is(parser, TOKEN_FOR))
+  {
+    for_statement(compiler, parser);
   }
   else if (advance_if_current_token_is(parser, TOKEN_IF))
   {
