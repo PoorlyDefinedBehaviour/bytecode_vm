@@ -90,6 +90,31 @@ static bool not(const Value value)
   return IS_NIL(value) || (IS_BOOL(value) && !AS_BOOL(value));
 }
 
+static bool is_truthy(const Value value)
+{
+  if (IS_NIL(value))
+  {
+    return false;
+  }
+
+  if (IS_BOOL(value))
+  {
+    return AS_BOOL(value);
+  }
+
+  if (IS_NUMBER(value))
+  {
+    return AS_NUMBER(value) != 0;
+  }
+
+  if (IS_STRING(value))
+  {
+    return AS_OBJSTRING(value)->length > 0;
+  }
+
+  return true;
+}
+
 static void concatenate_strings(Vm *vm)
 {
   ObjString *b = AS_OBJSTRING(pop(vm));
@@ -120,6 +145,7 @@ static void concatenate_strings(Vm *vm)
 static InterpretResult run(Vm *vm)
 {
 #define READ_BYTE() (*vm->ip++)
+#define READ_SHORT() (vm->ip += 2, (uint16_t)((vm->ip[-2] << 8) | vm->ip[-1]))
 #define READ_CONSTANT() (vm->chunk->constants.values[READ_BYTE()])
 #define READ_STRING() AS_OBJSTRING(READ_CONSTANT())
 #define BINARY_OP(value_type, op)                           \
@@ -301,17 +327,34 @@ static InterpretResult run(Vm *vm)
       break;
     }
     case OP_GET_LOCAL:
+    {
       // We push the value onto the stack because
       // other operations expect values to always be at the top
       // of the stack.
       uint8_t slot = READ_BYTE();
       push(vm, vm->stack[slot]);
       break;
+    }
     case OP_SET_LOCAL:
     {
       uint8_t slot = READ_BYTE();
 
       vm->stack[slot] = pop(vm);
+      break;
+    }
+    case OP_JUMP_IF_FALSE:
+    {
+      int16_t offset = READ_SHORT();
+      if (!is_truthy(peek(vm, 0)))
+      {
+        vm->ip += offset;
+      }
+      break;
+    }
+    case OP_JUMP:
+    {
+      uint16_t offset = READ_SHORT();
+      vm->ip += offset;
       break;
     }
     case OP_RETURN:
@@ -320,6 +363,7 @@ static InterpretResult run(Vm *vm)
   }
 
 #undef READ_BYTE
+#undef READ_SHORT
 #undef READ_CONSTANT
 #undef READ_STRING
 #undef BINARY_OP

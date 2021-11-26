@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "compiler.h"
 #include "scanner.h"
@@ -77,6 +78,83 @@ Compiler new_compiler()
   compiler.scope_depth = 0;
 
   return compiler;
+}
+
+static void expression(Parser *parser);
+static void declaration(Compiler *compiler, Parser *parser);
+static ParseRule *get_rule(const TokenType type);
+static void parse_precedence(Parser *parser, const Precedence precedence);
+static void error_at(Parser *parser, const Token *token, const char *message);
+static void advance(Parser *parser);
+static void statement(Compiler *compiler, Parser *parser);
+
+static void error(Parser *parser, const char *message)
+{
+  error_at(parser, &parser->previous, message);
+}
+
+static void error_at_current(Parser *parser, const char *message)
+{
+  error_at(parser, &parser->current, message);
+}
+
+static Chunk *get_current_chunk()
+{
+  return compiling_chunk;
+}
+
+static void emit_byte(Parser *parser, const uint8_t byte)
+{
+  write_chunk(get_current_chunk(), byte, parser->previous.line);
+}
+
+static void emit_bytes(Parser *parser, const uint8_t a, const uint8_t b)
+{
+  emit_byte(parser, a);
+  emit_byte(parser, b);
+}
+
+static uint8_t make_constant(Parser *parser, const Value value)
+{
+  const size_t constant = add_constant(get_current_chunk(), value);
+
+  if (constant > UINT8_MAX)
+  {
+    error(parser, "Too many constants in one chunk");
+    return 0;
+  }
+
+  return (uint8_t)constant;
+}
+
+static void emit_constant(Parser *parser, const Value value)
+{
+  emit_bytes(parser, OP_CONSTANT, make_constant(parser, value));
+}
+
+static void consume(Parser *parser, const TokenType type)
+{
+  if (parser->current.type == type)
+  {
+    advance(parser);
+    return;
+  }
+
+  char buffer[256];
+
+  snprintf(
+      buffer,
+      256,
+      "expected %s, got %s",
+      token_type_to_string(type),
+      token_type_to_string(parser->current.type));
+
+  error_at_current(parser, buffer);
+}
+
+static void emit_return(Parser *parser)
+{
+  emit_byte(parser, OP_RETURN);
 }
 
 static bool identifiers_equal(Token *a, Token *b)
@@ -167,11 +245,6 @@ static void end_scope(Compiler *compiler, Parser *parser)
   compiler->scope_depth--;
 }
 
-static void expression(Parser *parser);
-static void declaration(Compiler *compiler, Parser *parser);
-static ParseRule *get_rule(const TokenType type);
-static void parse_precedence(Parser *parser, const Precedence precedence);
-
 static void error_at(Parser *parser, const Token *token, const char *message)
 {
   if (parser->panic_mode)
@@ -195,16 +268,6 @@ static void error_at(Parser *parser, const Token *token, const char *message)
     fprintf(stderr, "%s\n", message);
     parser->had_error = true;
   }
-}
-
-static void error(Parser *parser, const char *message)
-{
-  error_at(parser, &parser->previous, message);
-}
-
-static void error_at_current(Parser *parser, const char *message)
-{
-  error_at(parser, &parser->current, message);
 }
 
 static void advance(Parser *parser)
@@ -233,65 +296,6 @@ Parser new_parser(Vm *vm, const char *source_code)
   parser.panic_mode = false;
 
   return parser;
-}
-
-static Chunk *get_current_chunk()
-{
-  return compiling_chunk;
-}
-
-static void emit_byte(Parser *parser, const uint8_t byte)
-{
-  write_chunk(get_current_chunk(), byte, parser->previous.line);
-}
-
-static void emit_bytes(Parser *parser, const uint8_t a, const uint8_t b)
-{
-  emit_byte(parser, a);
-  emit_byte(parser, b);
-}
-
-static uint8_t make_constant(Parser *parser, const Value value)
-{
-  const size_t constant = add_constant(get_current_chunk(), value);
-
-  if (constant > UINT8_MAX)
-  {
-    error(parser, "Too many constants in one chunk");
-    return 0;
-  }
-
-  return (uint8_t)constant;
-}
-
-static void emit_constant(Parser *parser, const Value value)
-{
-  emit_bytes(parser, OP_CONSTANT, make_constant(parser, value));
-}
-
-static void consume(Parser *parser, const TokenType type)
-{
-  if (parser->current.type == type)
-  {
-    advance(parser);
-    return;
-  }
-
-  char buffer[256];
-
-  snprintf(
-      buffer,
-      256,
-      "expected %s, got %s",
-      token_type_to_string(type),
-      token_type_to_string(parser->current.type));
-
-  error_at_current(parser, buffer);
-}
-
-static void emit_return(Parser *parser)
-{
-  emit_byte(parser, OP_RETURN);
 }
 
 static void end_compiler(Parser *parser)
@@ -734,7 +738,64 @@ static void block(Compiler *compiler, Parser *parser)
   consume(parser, TOKEN_RIGHT_BRACE);
 }
 
-static void declaration(Compiler *compiler, Parser *parser)
+// Emits a jump instruction and returns its index
+// in the chunk being compilled.
+static int emit_jump(Parser *parser, uint8_t opcode)
+{
+  emit_byte(parser, opcode);
+  // Emit two placeholder bytes that will be replaced
+  // when the jump instruction is patched.
+  emit_byte(parser, 0xff);
+  emit_byte(parser, 0xff);
+  return get_current_chunk()->count - 2;
+}
+
+// Replaces jump operand with the current bytecode position.
+static void patch_jump(int offset)
+{
+  Chunk *current_chunk = get_current_chunk();
+
+  int how_many_instructions_to_jump = current_chunk->count - offset - 2;
+
+  current_chunk->code[offset] = (how_many_instructions_to_jump >> 8) & 0xff;
+  current_chunk->code[offset + 1] = how_many_instructions_to_jump & 0xff;
+}
+
+static void if_statement(Compiler *compiler, Parser *parser)
+{
+  // Parse condition.
+  expression(parser);
+
+  // We dont know how many instructions the consequence branch
+  // will generate, because of that we emit a jump that will be updated later.
+  int then_jump = emit_jump(parser, OP_JUMP_IF_FALSE);
+
+  emit_byte(parser, OP_POP);
+
+  // Parse consequence.
+  statement(compiler, parser);
+
+  int else_jump = emit_jump(parser, OP_JUMP);
+
+  // The if statement condition and consequence instructions have already been emitted at this
+  // point, so we know how many operations [then_jump] should skip.
+  // We update the jump to take that into account.
+  patch_jump(then_jump);
+
+  emit_byte(parser, OP_POP);
+
+  if (advance_if_current_token_is(parser, TOKEN_ELSE))
+  {
+    statement(compiler, parser);
+  }
+
+  // The if statement alternative instructions have already been emitted at this point,
+  // so we know how many operations [else_jump] should skip.
+  // We update the jump to tkae that into account.
+  patch_jump(else_jump);
+}
+
+static void statement(Compiler *compiler, Parser *parser)
 {
   if (advance_if_current_token_is(parser, TOKEN_VAR))
   {
@@ -743,6 +804,10 @@ static void declaration(Compiler *compiler, Parser *parser)
   else if (advance_if_current_token_is(parser, TOKEN_PRINT))
   {
     print_statement(parser);
+  }
+  else if (advance_if_current_token_is(parser, TOKEN_IF))
+  {
+    if_statement(compiler, parser);
   }
   else if (advance_if_current_token_is(parser, TOKEN_LEFT_BRACE))
   {
@@ -754,6 +819,11 @@ static void declaration(Compiler *compiler, Parser *parser)
   {
     expression_statement(parser);
   }
+}
+
+static void declaration(Compiler *compiler, Parser *parser)
+{
+  statement(compiler, parser);
 
   if (parser->panic_mode)
   {

@@ -1,3 +1,1 @@
-var name = "world";
-var message = name + " world";
-print message;
+if 0 > 1 { print "then"; } else { print "else"; }
