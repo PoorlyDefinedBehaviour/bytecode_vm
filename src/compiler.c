@@ -87,6 +87,8 @@ static void parse_precedence(Parser *parser, const Precedence precedence);
 static void error_at(Parser *parser, const Token *token, const char *message);
 static void advance(Parser *parser);
 static void statement(Compiler *compiler, Parser *parser);
+static int emit_jump(Parser *parser, uint8_t opcode);
+static void patch_jump(int offset);
 
 static void error(Parser *parser, const char *message)
 {
@@ -372,6 +374,43 @@ static void number(Parser *parser, Precedence _)
   emit_constant(parser, NUMBER_VAL(value));
 }
 
+static void and_(Parser *parser, Precedence precedence)
+{
+  int end_jump = emit_jump(parser, OP_JUMP_IF_FALSE);
+
+  emit_byte(parser, OP_POP);
+
+  parse_precedence(parser, PREC_AND);
+
+  patch_jump(end_jump);
+}
+
+static void or_(Parser *parser, Precedence _)
+{
+  int else_jump = emit_jump(parser, OP_JUMP_IF_FALSE);
+  int end_jump = emit_jump(parser, OP_JUMP);
+
+  patch_jump(else_jump);
+
+  emit_byte(parser, OP_POP);
+
+  parse_precedence(parser, PREC_OR);
+
+  patch_jump(end_jump);
+
+  // This function generates the following instructions:
+  //
+  // OP_JUMP_IF_FALSE emitted by emit_jump(parser, OP_JUMP_IF_FALSE)
+  // OP_JUMP          emitted by emit_jump(parser, OP_JUMP)
+  // OP_JUMP_IF_FALSE jumps to here because of patch_jump(else_jump)
+  // OP_POP           emitted by emit_byte(parser, OP_POP)
+  // OP_CODE_1        |
+  // OP_CODE_2        | emitted by parse_precedence(parser, PREC_OR)
+  // OP_CODE_3        |
+  // OP_CODE_N        |
+  // OP_JUMP          jumps to here because of patch_jump(end_jump)
+}
+
 static void string(Parser *parser, Precedence _)
 {
   // Given the following string "hello world":
@@ -433,7 +472,6 @@ static void named_variable(Compiler *compiler, Parser *parser, Token name, Prece
   }
   else
   {
-
     // We add the identifier to the chunk constants
     // and add its index to the bytecode.
     // At runtime we will get the identifier from the chunk
@@ -549,7 +587,7 @@ ParseRule rules[] = {
     [TOKEN_IDENTIFIER] = {variable, NULL, PREC_NONE},
     [TOKEN_STRING] = {string, NULL, PREC_NONE},
     [TOKEN_NUMBER] = {number, NULL, PREC_NONE},
-    [TOKEN_AND] = {NULL, NULL, PREC_NONE},
+    [TOKEN_AND] = {NULL, and_, PREC_AND},
     [TOKEN_CLASS] = {NULL, NULL, PREC_NONE},
     [TOKEN_ELSE] = {NULL, NULL, PREC_NONE},
     [TOKEN_FALSE] = {literal, NULL, PREC_NONE},
@@ -557,7 +595,7 @@ ParseRule rules[] = {
     [TOKEN_FUN] = {NULL, NULL, PREC_NONE},
     [TOKEN_IF] = {NULL, NULL, PREC_NONE},
     [TOKEN_NIL] = {literal, NULL, PREC_NONE},
-    [TOKEN_OR] = {NULL, NULL, PREC_NONE},
+    [TOKEN_OR] = {NULL, or_, PREC_OR},
     [TOKEN_PRINT] = {NULL, NULL, PREC_NONE},
     [TOKEN_RETURN] = {NULL, NULL, PREC_NONE},
     [TOKEN_SUPER] = {NULL, NULL, PREC_NONE},

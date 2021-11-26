@@ -1,1 +1,1 @@
-if 0 > 1 { print "then"; } else { print "else"; }
+if true and 2 > 1 { print "then"; } else { print "else"; }
