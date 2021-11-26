@@ -374,7 +374,7 @@ static void number(Parser *parser, Precedence _)
   emit_constant(parser, NUMBER_VAL(value));
 }
 
-static void and_(Parser *parser, Precedence precedence)
+static void and_(Parser *parser, Precedence _)
 {
   int end_jump = emit_jump(parser, OP_JUMP_IF_FALSE);
 
