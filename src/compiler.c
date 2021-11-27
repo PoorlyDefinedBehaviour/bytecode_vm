@@ -11,8 +11,6 @@
 #include "debug.h"
 #endif
 
-Chunk *compiling_chunk;
-
 typedef enum
 {
   PREC_NONE,
@@ -40,8 +38,6 @@ typedef struct
   // this local.
   // [depth] will be 0 when the variable is declared
   // in the global scope.
-  // TODO: will [depth] ever be 0 since we have another
-  // mechanism to declare globals?
   int depth;
 } Local;
 
@@ -73,12 +69,23 @@ typedef struct
   int scope_depth;
 } Compiler;
 
-Compiler new_compiler()
+Compiler new_compiler(Vm *vm, FunctionType type)
 {
   Compiler compiler;
 
   compiler.local_count = 0;
   compiler.scope_depth = 0;
+
+  compiler.function = new_function(vm);
+  compiler.type = type;
+
+  // The compiler implicitly claims stack slot zero for the VM's
+  // own internal use. We give it an empty name so that the user
+  // can't write an identifier that refers to it.
+  Local *local = &compiler.locals[compiler.local_count++];
+  local->depth = 0;
+  local->name.start = "";
+  local->name.length = 0;
 
   return compiler;
 }
@@ -319,7 +326,10 @@ static void end_compiler(Compiler *compiler, Parser *parser)
 #ifdef DEBUG_PRINT_CODE
   if (!parser->had_error)
   {
-    dissasamble_chunk(get_current_chunk(compiler), "code");
+    const char *function_name = compiler->function->name != NULL
+                                    ? compiler->function->name->chars
+                                    : "script";
+    dissasamble_chunk(get_current_chunk(compiler), function_name);
   }
 #endif
 }
@@ -985,12 +995,10 @@ static void declaration(Compiler *compiler, Parser *parser)
   }
 }
 
-bool compile(Vm *vm, const char *source_code, Chunk *chunk)
+ObjFunction *compile(Vm *vm, const char *source_code)
 {
   Parser parser = new_parser(vm, source_code);
-  Compiler compiler = new_compiler();
-
-  compiling_chunk = chunk;
+  Compiler compiler = new_compiler(vm, TYPE_SCRIPT);
 
   advance(&parser);
 
@@ -1001,5 +1009,10 @@ bool compile(Vm *vm, const char *source_code, Chunk *chunk)
 
   end_compiler(&compiler, &parser);
 
-  return !parser.had_error;
+  if (parser.had_error)
+  {
+    return NULL;
+  }
+
+  return compiler.function;
 }

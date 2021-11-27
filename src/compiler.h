@@ -14,7 +14,7 @@ typedef struct
   Vm *vm;
 } Parser;
 
-bool compile(Vm *vm, const char *source_code, Chunk *chunk);
+ObjFunction *compile(Vm *vm, const char *source_code);
 Parser new_parser(Vm *vm, const char *source_code);
 
 #endif

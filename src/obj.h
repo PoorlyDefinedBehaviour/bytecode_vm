@@ -35,7 +35,6 @@ struct Obj
 struct ObjString
 {
   Obj obj;
-  // TODO: should length be unsigned int?
   int length;
   char *chars;
   // [hash] is pre computed to make indexing hash tables faster.

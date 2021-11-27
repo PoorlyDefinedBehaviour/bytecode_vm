@@ -38,6 +38,13 @@ void free_value_array(ValueArray *array)
 
 static void print_function(ObjFunction *function)
 {
+  // [function->name] will be NULL if [function]
+  // is the implicit top-level function.
+  if (function->name == NULL)
+  {
+    printf("<script>");
+    return;
+  }
   printf("<fn %s>", function->name->chars);
 }
 
