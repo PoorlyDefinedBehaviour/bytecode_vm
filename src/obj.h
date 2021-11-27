@@ -56,7 +56,7 @@ typedef struct
   ObjString *name;
 } ObjFunction;
 
-ObjFunction *new_function();
+ObjFunction *new_function(Vm *vm);
 
 #define OBJ_TYPE(value) ((AS_OBJ(value))->type)
 

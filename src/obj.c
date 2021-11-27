@@ -24,9 +24,9 @@ static Obj *allocate_object(Vm *vm, size_t size, ObjType type)
   return object;
 }
 
-ObjFunction *new_function()
+ObjFunction *new_function(Vm *vm)
 {
-  ObjFunction *function = ALLOCATE_OBJ(ObjFunction, OBJ_FUNCTION);
+  ObjFunction *function = ALLOCATE_OBJ(vm, ObjFunction, OBJ_FUNCTION);
   function->arity = 0;
   function->name = NULL;
   init_chunk(&function->chunk);
