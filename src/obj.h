@@ -4,9 +4,11 @@
 #include "vm.h"
 #include "common.h"
 #include "value.h"
+#include "chunk.h"
 
 typedef enum
 {
+  OBJ_FUNCTION,
   OBJ_STRING,
 } ObjType;
 
@@ -44,6 +46,18 @@ ObjString *copy_string(Vm *vm, const char *chars, int length);
 
 ObjString *take_string(Vm *vm, const char *chars, int length);
 
+typedef struct
+{
+  Obj obj;
+  // [arity] is the number of parameters the function expects.
+  int arity;
+  // [chunk] contains the function body instructions.
+  Chunk chunk;
+  ObjString *name;
+} ObjFunction;
+
+ObjFunction *new_function();
+
 #define OBJ_TYPE(value) ((AS_OBJ(value))->type)
 
 // NOTE: Why did we create isObjType instead of
@@ -65,12 +79,14 @@ ObjString *take_string(Vm *vm, const char *chars, int length);
 // If we had defined the logic inside the macro itself,
 // POP() would be evaluated more than once.
 #define IS_STRING(value) isObjType(value, OBJ_STRING)
+#define IS_FUNCTION(value) isObjType(value, OBJ_FUNCTION)
 
 static inline bool isObjType(Value value, ObjType type)
 {
   return IS_OBJ(value) && AS_OBJ(value)->type == type;
 }
 
+#define AS_FUNCTION(value) ((ObjFunction *)AS_OBJ(value))
 #define AS_OBJSTRING(value) ((ObjString *)AS_OBJ(value))
 
 #endif

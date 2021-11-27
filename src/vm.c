@@ -44,6 +44,13 @@ void free_object(Obj *obj)
     FREE(ObjString, obj);
     break;
   }
+  case OBJ_FUNCTION:
+  {
+    ObjFunction *function = (ObjFunction *)obj;
+    free_chunk(&function->chunk);
+    FREE(ObjFunction, obj);
+    break;
+  }
   }
 }
 
@@ -333,6 +340,7 @@ static InterpretResult run(Vm *vm)
       // other operations expect values to always be at the top
       // of the stack.
       uint8_t slot = READ_BYTE();
+
       push(vm, vm->stack[slot]);
       break;
     }

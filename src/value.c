@@ -36,6 +36,11 @@ void free_value_array(ValueArray *array)
   init_value_array(array);
 }
 
+static void print_function(ObjFunction *function)
+{
+  printf("<fn %s>", function->name->chars);
+}
+
 void print_object(Value obj)
 {
   switch (OBJ_TYPE(obj))
@@ -43,6 +48,8 @@ void print_object(Value obj)
   case OBJ_STRING:
     printf("%s", AS_OBJSTRING(obj)->chars);
     break;
+  case OBJ_FUNCTION:
+    print_function(AS_FUNCTION(obj));
   }
 }
 

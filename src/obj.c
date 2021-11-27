@@ -24,6 +24,15 @@ static Obj *allocate_object(Vm *vm, size_t size, ObjType type)
   return object;
 }
 
+ObjFunction *new_function()
+{
+  ObjFunction *function = ALLOCATE_OBJ(ObjFunction, OBJ_FUNCTION);
+  function->arity = 0;
+  function->name = NULL;
+  init_chunk(&function->chunk);
+  return function;
+}
+
 // http://www.isthe.com/chongo/tech/comp/fnv/
 static uint32_t hash_string(const char *string, int length)
 {
